@@ -4,14 +4,53 @@
 
 ## 바로 실행하기
 
-Node.js 22 이상과 npm이 필요합니다. macOS/Linux와 Windows PowerShell에서 같은 명령을 사용합니다.
+Git과 Node.js 22 이상이 필요합니다. 현재 앱 코드는 `feat/cloud-study-mvp` 브랜치에 있습니다.
+
+### Windows PowerShell
+
+처음 내려받는 경우 일반 PowerShell 창에서 아래 명령을 한 줄씩 실행하세요. 사용자 폴더 아래에 작업 폴더를 만들어 `C:\Windows\System32`에서 작업하지 않도록 합니다.
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\source" | Out-Null
+Set-Location "$env:USERPROFILE\source"
+git clone --branch feat/cloud-study-mvp https://github.com/purejomo/AstraAI.git
+Set-Location AstraAI
+node --version
+npm.cmd ci
+npm.cmd run dev
+```
+
+`node --version`이 `v22` 이상인지 확인하세요. 이미 저장소를 복제했다면 다시 복제하지 말고, 기존 `AstraAI` 폴더에서 `npm.cmd ci`와 `npm.cmd run dev`를 실행하면 됩니다.
+
+터미널에 `Ready`가 표시되면 **앱을 실행한 PC의 브라우저 주소창**에 `http://localhost:3000`을 입력하세요. 앱을 사용하는 동안 PowerShell 창을 열어두고, 종료할 때는 `Ctrl+C`를 누릅니다. 다음에 다시 실행할 때는 같은 `AstraAI` 폴더에서 `npm.cmd run dev`만 실행하면 됩니다.
+
+**`npm.ps1` 실행 정책 오류가 나타나는 경우**
+
+`이 시스템에서 스크립트를 실행할 수 없으므로 … npm.ps1 파일을 로드할 수 없습니다` 또는 `PSSecurityException`은 PowerShell이 npm의 `.ps1` 실행 파일을 차단한 것입니다. Windows에서는 아래처럼 `.cmd` 실행 파일을 명시하세요.
+
+```powershell
+npm.cmd ci
+npm.cmd run dev
+```
+
+관리자 PowerShell이나 `Set-ExecutionPolicy` 변경은 필요하지 않습니다. 이 문서의 다른 `npm` 명령도 Windows에서는 `npm.cmd`, `npx` 명령은 `npx.cmd`로 실행하세요.
+
+최신 코드를 받으려면 실행 중인 서버를 `Ctrl+C`로 종료한 뒤, 기존 저장소 폴더에서 실행합니다.
+
+```powershell
+git pull --ff-only
+npm.cmd ci
+npm.cmd run dev
+```
+
+### macOS / Linux / Codex Cloud
 
 ```sh
 npm ci
 npm run dev
 ```
 
-브라우저에서 로컬 포트 3000을 열고 데모 계정을 선택합니다. Cloud에서는 기존 체크아웃 `/workspace/AstraAI`에서 작업하며, 준비된 Node 22를 사용하려면 먼저 `source /workspace/.astraai-tools/activate.sh`를 실행합니다. 새 worktree는 필요하지 않습니다.
+앱을 실행한 환경의 브라우저에서 `http://localhost:3000`을 열고 데모 계정을 선택합니다. Cloud에서는 기존 체크아웃 `/workspace/AstraAI`에서 작업하며, 준비된 Node 22를 사용하려면 먼저 `source /workspace/.astraai-tools/activate.sh`를 실행합니다. 새 worktree는 필요하지 않습니다. Cloud 앱은 Cloud의 Desktop 브라우저에서 접속합니다.
 
 개발·프로덕션 테스트 서버 모두 기본적으로 `127.0.0.1`에만 바인딩합니다. API도 로컬 Host와 변경 요청의 동일 Origin을 검사합니다. 배포 가능한 실제 인증을 대신하는 장치가 아니므로 이 데모를 공개 서비스로 노출하지 마세요.
 
@@ -21,6 +60,8 @@ npm run start
 ```
 
 ## 첫 학습 흐름
+
+**빠르게 시험하려면:** 관리자 입장 → **샘플 불러오기** → **검증하고 미리보기** → 내용 검수 체크 → **검수한 초안 저장** → **3명에게 게시** → 상단에서 **학습자 1** 선택 → 학습팩의 **문제 풀기 → 퀴즈 시작** 순서로 진행하세요. 일부러 틀린 답을 제출한 뒤 **오답과 복습**에서 다시 풀어보고, 새로고침 후에도 기록이 유지되는지 확인할 수 있습니다. 샘플을 사용할 때는 ChatGPT 작업이 필요하지 않습니다.
 
 1. **관리자**로 입장합니다. 제목·목표·문항 수로 프롬프트를 만들고 복사합니다.
 2. 관리자가 자신의 ChatGPT 대화에 프롬프트와 원본 PDF/이미지를 직접 첨부합니다. 앱은 자동 전송하지 않습니다.
@@ -60,12 +101,25 @@ ASTRA_DATA_DIR=/tmp/astra-demo npm run dev
 ```powershell
 # Windows PowerShell
 $env:ASTRA_DATA_DIR = "$PWD\.local-demo"
-npm run dev
+npm.cmd run dev
 ```
 
 현재 비밀값이나 API 키는 필요하지 않습니다. ChatGPT 쿠키/토큰, 실시간 LLM, OpenAI API, GPU 서버를 사용하지 않습니다.
 
 ## 검증
+
+Windows PowerShell:
+
+```powershell
+npm.cmd run lint
+npm.cmd run typecheck
+npm.cmd test
+npm.cmd run build
+npx.cmd playwright install chromium
+npm.cmd run test:e2e
+```
+
+macOS / Linux:
 
 ```sh
 npm run lint
@@ -86,7 +140,7 @@ CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e
 ```powershell
 # 설치된 Chrome/Chromium을 지정할 경우에만
 $env:CHROMIUM_PATH = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-npm run test:e2e
+npm.cmd run test:e2e
 ```
 
 E2E는 빌드된 앱을 포트 3100에서 시작하고, 각 실행의 임시 디렉터리를 사용합니다. 개발 데이터는 지우지 않습니다. Playwright 결과/스크린샷은 `test-results/`, HTML 보고서는 `playwright-report/`에 생성되며 Git에서 제외됩니다. `agent-browser`가 없는 Cloud에서는 지침에 따라 Playwright를 사용했습니다.
