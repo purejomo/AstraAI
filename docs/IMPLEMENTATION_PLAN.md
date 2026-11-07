@@ -65,7 +65,8 @@ Git 또는 Node가 이미 설치되어 있다면 해당 설치 명령은 생략.
 - [x] 최적화 빌드 통과. CSS의 public 경로 import 오류 수정.
 - [x] 브라우저 E2E: Next의 내부 요청 URL 정규화 문제를 Host 기준 동일 출처 검사로 수정. 정상 로컬 로그인과 외부 Host/다른 포트의 Origin 거부 회귀 테스트 통과.
 - [x] 1440/390px 전체 흐름 및 스크린샷 검토, 1024/768px 가로 넘침 검사. 아이콘 404와 텍스트 대비 오류 수정. 로그인·대시보드 axe WCAG 2 A/AA·2.1 AA 검사에서 발견된 위반 0건. 모바일 메뉴 포커스 이동/복귀·Escape 검증.
-- [ ] 최종 커밋 및 PR.
+- [x] 기능 커밋과 `feat/cloud-study-mvp` 브랜치 원격 푸시.
+- [ ] PR 생성: `gh pr create` 실행 시 `https://api.github.com/graphql`이 정책 403으로 차단됨. PR 제목/본문 준비 완료.
 
 현재 외부 차단: Git HTTPS 읽기는 가능하지만 `api.github.com`은 네트워크 정책에 의해 403으로 거부됨. PR API용 도메인만 환경 초안에 추가했으며 실제 적용/게시를 수행하지 않음.
 
@@ -83,3 +84,5 @@ Git 또는 Node가 이미 설치되어 있다면 해당 설치 명령은 생략.
 - 다음 작업: 네트워크 허용 적용 후 PR 생성/원격 CI 결과 확인. 실제 인증과 배포는 별도 사용자 승인 이후 진행.
 - 실제 프로덕션 테스트 서버를 종료한 뒤 같은 임시 데이터 디렉터리로 재시작: 데모 세션·게시 학습팩·채점 결과·복습 일정 유지 확인. 테스트가 만든 임시 디렉터리만 정리했다.
 - 검토용 화면: [1440px 데스크톱](screenshots/dashboard-desktop.png), [390px 모바일](screenshots/dashboard-mobile.png). 자동 테스트용 예제 기록이다.
+
+- `npm run dev` 실제 기동과 익명 bootstrap 응답 확인. Next.js의 자동 AGENTS.md 변경은 문서화된 `agentRules: false`로 꺼서 기존 저장소 지침을 보존한다.
