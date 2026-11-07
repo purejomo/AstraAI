@@ -270,8 +270,8 @@ export async function handle(
             .split("```text")[1]
             .split("```")[0]
             .trim()
-            .replace("[제목 입력]", title)
-            .replace("[목표/수준 입력]", level)
+            .replace("[제목 입력]", () => title)
+            .replace("[목표/수준 입력]", () => level)
             .replace("30문항 (필요하면 변경)", `${count}문항`);
           return json({
             prompt: `${prompt}\n\n반드시 다음 JSON Schema도 준수하세요:\n${JSON.stringify(schema, null, 2)}`,

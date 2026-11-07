@@ -1,7 +1,7 @@
 {
   "file": "AstraAI-Setup.exe",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "platform": "win32-x64",
-  "bytes": 127675266,
-  "sha256": "c818bbc2e4f5636530d8d1f33fb576104389c587bb15052d98894c5533741d36"
+  "bytes": 127672559,
+  "sha256": "a95170d0fa80c988a763cf671c946d302ff53bfbc2194ffd31177cb8db3cbaa2"
 }

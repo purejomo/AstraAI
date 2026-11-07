@@ -332,16 +332,24 @@ describe("personal workspace, authoring and grading", () => {
     await owner("history", { historyId: "learner-1" });
     expect((await owner(`runs/${run.id}`)).status).toBe(200);
   });
-  it("generates a manual prompt and expires sessions without deleting content", async () => {
+  it("generates a downloadable JSON prompt and expires sessions without deleting content", async () => {
     const { owner } = await setup();
     const prompt = (
       await owner("library/prompt", {
-        title: "자료구조",
-        level: "대학 기초",
+        title: "자료구조 $&",
+        level: "대학 기초 $&",
         count: 8,
       })
     ).data.prompt;
-    for (const value of ["자료구조", "8문항", "2020-12"])
+    for (const value of [
+      "자료구조 $&",
+      "대학 기초 $&",
+      "8문항",
+      "2020-12",
+      "UTF-8 JSON 파일 study-pack.json",
+      "실제 다운로드 링크",
+      "자료를 아직 첨부하지 않았다면 먼저 자료를 요청",
+    ])
       expect(prompt).toContain(value);
     expect(
       (

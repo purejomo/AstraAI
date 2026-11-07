@@ -26,7 +26,7 @@ type View =
   "home" | "packs" | "review" | "goals" | "stats" | "settings" | "library";
 const nav = [
   { id: "home", label: "오늘의 학습", icon: LayoutDashboard },
-  { id: "library", label: "나의 문제은행", icon: Plus },
+  { id: "library", label: "학습팩 만들기", icon: Plus },
   { id: "packs", label: "나의 학습팩", icon: Library },
   { id: "review", label: "오답과 복습", icon: RotateCcw },
   { id: "goals", label: "학습 계획", icon: CalendarDays },
@@ -325,7 +325,6 @@ export default function StudyApp() {
           ) : view === "library" ? (
             <LibraryView
               open={open}
-              packs={data.libraryPacks}
               refresh={async () => {
                 await refresh();
               }}
@@ -342,7 +341,7 @@ export default function StudyApp() {
               <section className="panel">
                 <h2>내 문제은행과 기록 보관</h2>
                 <p>
-                  학습팩을 직접 만들고 수정한 뒤 같은 학습실에서 공부할 수
+                  GPT에서 받은 문제 JSON을 학습팩으로 저장하고 공부할 수
                   있습니다. 다른 사람이 내려받은 설치본과는 자료나 기록이
                   공유되지 않습니다.
                 </p>
@@ -350,9 +349,8 @@ export default function StudyApp() {
                   {data.storageMode === "desktop"
                     ? "학습팩과 기록은 Windows 사용자 폴더에 저장됩니다. 앱 상단 메뉴의 ‘학습 데이터 폴더 열기’로 위치를 확인하세요."
                     : "학습팩과 기록은 설치 폴더의 .local/study.json에 저장됩니다."}
-                  앱을 종료한 뒤 데이터 폴더를 복사해 백업하세요. 작성 중인
-                  내용은 이 브라우저에만 임시 보관되며, 정식 저장 전에는 백업에
-                  포함되지 않습니다.
+                  앱을 종료한 뒤 데이터 폴더를 복사해 백업하세요. 가져오기 전의
+                  JSON 파일도 따로 보관하세요.
                 </p>
                 <p>
                   이 앱은 본인 PC에서 사용하는 개인 학습실입니다. 인터넷용
@@ -465,7 +463,7 @@ export default function StudyApp() {
                       <p>
                         {data.packs.length
                           ? `${data.packs.length}개 학습팩에서 오늘의 공부를 시작해 보세요.`
-                          : "내가 만든 문제로 첫 공부를 시작해 보세요."}
+                          : "GPT가 만든 문제 파일로 첫 공부를 시작해 보세요."}
                       </p>
                       <button
                         className="button primary"
@@ -571,7 +569,7 @@ export default function StudyApp() {
               ) : (
                 <div className="page-heading">
                   <div>
-                    <p className="eyebrow">직접 쌓아가는 학습 자료</p>
+                    <p className="eyebrow">저장한 학습 자료</p>
                     <h1>나의 학습팩</h1>
                     <p>개념부터 퀴즈, 플래시카드와 모의고사까지.</p>
                   </div>
@@ -601,14 +599,14 @@ export default function StudyApp() {
                   <Library size={36} />
                   <h2>아직 저장한 학습팩이 없어요</h2>
                   <p>
-                    나의 문제은행에서 직접 문제를 만들거나 JSON 파일을
-                    가져오세요.
+                    학습팩 만들기에서 프롬프트를 준비하고, GPT가 만든 JSON
+                    파일을 가져오세요.
                   </p>
                   <button
                     className="button secondary"
                     onClick={() => navigate("library")}
                   >
-                    나의 문제은행 열기
+                    학습팩 만들기
                     <ArrowRight size={16} />
                   </button>
                 </div>

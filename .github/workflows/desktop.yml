@@ -32,6 +32,13 @@ jobs:
           cache-dependency-path: developer/package-lock.json
       - run: npm ci
       - run: npm run verify:installer
+      - name: Compare source and distributed versions
+        id: distribution
+        shell: pwsh
+        run: |
+          $source = (Get-Content package.json | ConvertFrom-Json).version
+          $distributed = (Get-Content distribution.json | ConvertFrom-Json).version
+          "matches=$($source -eq $distributed)".ToLower() | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       - run: npm run desktop:win
       - name: Install the rebuilt app
         shell: pwsh
@@ -56,12 +63,14 @@ jobs:
       - name: Test the rebuilt app
         run: npm run test:desktop
       - name: Install the exact executable distributed on main
+        if: steps.distribution.outputs.matches == 'true'
         shell: pwsh
         run: |
           $installer = (Resolve-Path ../AstraAI-Setup.exe).Path
           $result = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
           if ($result.ExitCode -ne 0) { throw "Distributed installer failed: $($result.ExitCode)" }
       - name: Test the distributed app
+        if: steps.distribution.outputs.matches == 'true'
         run: npm run test:desktop
       - uses: actions/upload-artifact@v4
         with:

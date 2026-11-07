@@ -1,8 +1,41 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import sample from "../examples/sample-study-pack.json";
+async function stage(
+  page: Page,
+  title: string,
+  testInfo: TestInfo,
+  name: string,
+  checkAccessibility = false,
+) {
+  await expect(
+    page.getByRole("heading", { name: title, exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  if (checkAccessibility)
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+  await page.screenshot({
+    path: testInfo.outputPath(`${name}.png`),
+    fullPage: true,
+  });
+}
+const jsonFile = (data: unknown) => ({
+  name: "study-pack.json",
+  mimeType: "application/json",
+  buffer: Buffer.from(JSON.stringify(data)),
+});
 for (const width of [1440, 390])
-  test(`direct authoring → quiz → review, cards, exam and plans at ${width}px`, async ({
+  test(`GPT prompt → JSON → quiz → review, cards, exam and plans at ${width}px`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
@@ -30,84 +63,91 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole("heading", { name: "오늘의 학습", exact: true }),
     ).toBeVisible();
-    await nav("나의 문제은행");
     await page
-      .getByRole("button", { name: "새 학습팩 만들기", exact: true })
-      .click();
+      .context()
+      .grantPermissions(["clipboard-read", "clipboard-write"]);
+    await nav("학습팩 만들기");
     await page.getByLabel("학습팩 제목", { exact: true }).fill(title);
-    await page
-      .getByLabel("개념 1 제목", { exact: true })
-      .fill(sample.concepts[0].title);
+    await page.getByLabel("학습 목표와 수준").fill("대학 기초");
+    await page.getByLabel("문항 수", { exact: true }).fill("1");
     await page.reload();
-    await nav("나의 문제은행");
+    await nav("학습팩 만들기");
     await expect(page.getByLabel("학습팩 제목", { exact: true })).toHaveValue(
       title,
     );
-    await expect(page.getByLabel("개념 1 제목", { exact: true })).toHaveValue(
-      sample.concepts[0].title,
+    await stage(
+      page,
+      "어떤 문제를 만들까요?",
+      testInfo,
+      `conditions-${width}`,
+      width === 390,
+    );
+    await expect(
+      page.getByRole("button", { name: "샘플로 시작하기" }),
+    ).toHaveCount(0);
+    await expect(page.getByLabel("문제 내용", { exact: true })).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "프롬프트 만들기", exact: true })
+      .click();
+    await stage(
+      page,
+      "프롬프트를 복사하세요",
+      testInfo,
+      `prompt-${width}`,
+      width === 390,
+    );
+    await page.getByRole("button", { name: "프롬프트 복사하고 다음" }).click();
+    await stage(
+      page,
+      "ChatGPT에 자료와 함께 보내세요",
+      testInfo,
+      `gpt-${width}`,
+      width === 390,
+    );
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain(title);
+    expect(copied).toContain("study-pack.json");
+    expect(copied).toContain("실제 다운로드 링크");
+    await expect(
+      page.getByRole("link", { name: "ChatGPT 열기" }),
+    ).toHaveAttribute("href", "https://chatgpt.com/");
+    await page.reload();
+    await nav("학습팩 만들기");
+    await expect(
+      page.getByRole("heading", { name: "ChatGPT에 자료와 함께 보내세요" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "JSON 파일을 받았어요" }).click();
+    await stage(
+      page,
+      "받은 JSON 파일을 가져오세요",
+      testInfo,
+      `import-${width}`,
+      width === 390,
     );
     await page
-      .getByRole("textbox", { name: "학습팩 설명", exact: true })
-      .fill(sample.description);
-    await page
-      .getByRole("textbox", { name: "개념 1 요약", exact: true })
-      .fill(sample.concepts[0].summary);
-    await page
-      .getByRole("textbox", {
-        name: "개념 1 핵심 내용 · 한 줄에 하나",
-        exact: true,
-      })
-      .fill(sample.concepts[0].key_points.join("\n"));
-    await page
-      .getByRole("textbox", { name: "문제 내용", exact: true })
-      .fill(sample.questions[0].question);
-    for (let i = 0; i < 4; i++)
-      await page
-        .getByLabel(`보기 ${i + 1}`, { exact: true })
-        .fill(sample.questions[0].choices[i]);
-    await page.getByLabel("1번 정답", { exact: true }).check();
-    await page
-      .getByRole("textbox", { name: "정답 해설", exact: true })
-      .fill(sample.questions[0].explanation);
-    await page
-      .getByRole("textbox", { name: "힌트", exact: true })
-      .fill(sample.questions[0].hint);
-    await page
-      .getByRole("textbox", { name: "오답 복습 안내", exact: true })
-      .fill(sample.questions[0].wrong_feedback);
-    await page.getByRole("button", { name: "카드 추가", exact: true }).click();
-    await page
-      .getByRole("textbox", { name: "카드 1 앞면", exact: true })
-      .fill(sample.flashcards[0].front);
-    await page
-      .getByRole("textbox", { name: "카드 1 뒷면", exact: true })
-      .fill(sample.flashcards[0].back);
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBe(true);
-    await page.evaluate(() => {
-      (document.activeElement as HTMLElement)?.blur();
-      window.scrollTo(0, 0);
-    });
-    await page.screenshot({
-      path: testInfo.outputPath(`editor-${width}.png`),
-      fullPage: true,
-    });
-    await page
-      .getByRole("button", { name: "검증하고 미리보기", exact: true })
-      .click();
+      .getByLabel("학습팩 JSON 파일")
+      .setInputFiles(jsonFile({ ...sample, title }));
+    await stage(
+      page,
+      "문제와 정답을 확인하세요",
+      testInfo,
+      `preview-${width}`,
+      width === 390,
+    );
     await expect(
-      page.getByRole("heading", { name: "저장 전 미리보기", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "내 학습팩에 저장", exact: true }),
+      page.getByRole("button", { name: "학습팩 저장", exact: true }),
     ).toBeDisabled();
     await page.getByLabel("내용과 정답을 확인했습니다.").check();
     await page
-      .getByRole("button", { name: "내 학습팩에 저장", exact: true })
+      .getByRole("button", { name: "학습팩 저장", exact: true })
       .click();
+    await stage(
+      page,
+      "학습팩을 저장했어요",
+      testInfo,
+      `saved-${width}`,
+      width === 390,
+    );
     await page
       .getByRole("button", { name: "바로 학습하기", exact: true })
       .click();
@@ -238,7 +278,7 @@ test("local session boundary and tablet layout", async ({ page }) => {
   }
 });
 
-test("keyboard navigation and WCAG accessibility on dashboard and editor", async ({
+test("keyboard navigation and WCAG accessibility on dashboard and pack creation", async ({
   page,
 }) => {
   await page.goto("/");
@@ -254,10 +294,7 @@ test("keyboard navigation and WCAG accessibility on dashboard and editor", async
   ).toEqual([]);
   await page
     .getByRole("navigation", { name: "주 메뉴" })
-    .getByRole("button", { name: "나의 문제은행", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "새 학습팩 만들기", exact: true })
+    .getByRole("button", { name: "학습팩 만들기", exact: true })
     .click();
   expect(
     (
@@ -337,27 +374,15 @@ test("multi-question exam restores navigation and automatically submits unanswer
   ).toHaveCount(1);
 });
 
-test("JSON import, prompt, editing and export round-trip", async ({
+test("import recovery, one-question preview and saving despite a failed list refresh", async ({
   page,
-}, testInfo) => {
-  const title = "JSON으로 옮기는 나의 문제은행";
+}) => {
   await page.goto("/");
   await page
-    .getByRole("navigation", { name: "주 메뉴" })
-    .getByRole("button", { name: "나의 문제은행", exact: true })
+    .getByRole("navigation")
+    .getByRole("button", { name: "학습팩 만들기", exact: true })
     .click();
-  await page
-    .getByText("ChatGPT에 사용할 프롬프트 만들기", { exact: true })
-    .click();
-  await page
-    .getByLabel("프롬프트용 학습팩 제목", { exact: true })
-    .fill("운영체제");
-  await page.getByLabel("학습 목표와 수준").fill("대학 기초");
-  await page
-    .getByRole("button", { name: "프롬프트 생성", exact: true })
-    .click();
-  await expect(page.getByLabel("생성된 프롬프트")).toHaveValue(/운영체제/);
-  await page.getByText("JSON 파일로 가져오기", { exact: true }).click();
+  await page.getByRole("button", { name: "이미 JSON 파일이 있어요" }).click();
   const upload = page.getByLabel("학습팩 JSON 파일");
   await upload.setInputFiles({
     name: "broken.json",
@@ -367,95 +392,147 @@ test("JSON import, prompt, editing and export round-trip", async ({
   await expect(page.locator("#main").getByRole("alert")).toContainText(
     "JSON 문법",
   );
+  await expect(page.locator("#main").getByRole("alert")).toContainText(
+    "ChatGPT에 아래 오류",
+  );
   await upload.setInputFiles({
-    name: "study-pack.json",
+    name: "invalid.json",
     mimeType: "application/json",
-    buffer: Buffer.from(JSON.stringify({ ...sample, title })),
+    buffer: Buffer.from([0xff]),
   });
-  await expect(page.getByLabel("학습팩 제목", { exact: true })).toHaveValue(
-    title,
-  );
-  await page.getByLabel("내용과 정답을 확인했습니다.").check();
-  await page
-    .getByRole("button", { name: "내 학습팩에 저장", exact: true })
-    .click();
-  const managed = page
-    .locator(".managed-pack")
-    .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
-  await expect(managed).toBeVisible();
-  await managed.getByRole("button", { name: "수정하기", exact: true }).click();
+  await expect(page.locator("#main").getByRole("alert")).toContainText("UTF-8");
+  const fixture = {
+    ...sample,
+    title: "파일 확인 후 저장",
+    questions: Array.from({ length: 3 }, (_, i) => ({
+      ...sample.questions[0],
+      id: `preview_${i}`,
+      question: `미리보기 문제 ${i + 1}`,
+    })),
+  };
+  await upload.setInputFiles(jsonFile(fixture));
   await expect(
-    page.getByRole("textbox", { name: "문제 내용", exact: true }),
-  ).toHaveValue(sample.questions[0].question);
-  await page.getByRole("button", { name: "문제 추가", exact: true }).click();
-  await page
-    .getByRole("textbox", { name: "문제 내용", exact: true })
-    .fill("추가한 연습 문제");
-  for (let i = 0; i < 4; i++)
-    await page
-      .getByLabel(`보기 ${i + 1}`, { exact: true })
-      .fill(`선택지 ${i + 1}`);
-  await page.getByLabel("3번 정답", { exact: true }).check();
-  await page
-    .getByRole("textbox", { name: "정답 해설", exact: true })
-    .fill("세 번째 선택지가 맞습니다.");
-  await page
-    .getByRole("textbox", { name: "힌트", exact: true })
-    .fill("개념을 떠올려 보세요.");
-  await page
-    .getByRole("textbox", { name: "오답 복습 안내", exact: true })
-    .fill("요약을 다시 읽어 보세요.");
-  await page
-    .getByRole("button", { name: "검증하고 미리보기", exact: true })
-    .click();
+    page.getByRole("heading", { name: "미리보기 문제 1", exact: true }),
+  ).toBeFocused();
   await expect(
-    page.getByRole("heading", { name: "저장 전 미리보기", exact: true }),
-  ).toBeVisible();
-  await page.getByLabel("내용과 정답을 확인했습니다.").check();
-  // A further edit invalidates the already-approved snapshot.
-  await page
-    .getByRole("textbox", { name: "힌트", exact: true })
-    .fill("핵심 내용을 다시 떠올려 보세요.");
-  await expect(
-    page.getByRole("heading", { name: "저장 전 미리보기", exact: true }),
+    page.getByRole("heading", { name: "미리보기 문제 2", exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "검증하고 미리보기", exact: true })
-    .click();
+  await expect(
+    page.getByRole("button", { name: "이전 문제", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "다음 문제", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "미리보기 문제 2", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: "다음 문제", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "다음 문제", exact: true }),
+  ).toBeDisabled();
   await page.getByLabel("내용과 정답을 확인했습니다.").check();
+  await page.getByRole("button", { name: "다른 JSON 파일 선택" }).click();
+  await upload.setInputFiles(jsonFile(fixture));
+  await expect(
+    page.getByLabel("내용과 정답을 확인했습니다."),
+  ).not.toBeChecked();
+  await page.reload();
   await page
-    .getByRole("button", { name: "내 학습팩에 저장", exact: true })
+    .getByRole("navigation")
+    .getByRole("button", { name: "학습팩 만들기", exact: true })
     .click();
-  await expect(managed).toContainText("2문항 · 2개 저장본");
-  const downloading = page.waitForEvent("download");
-  await managed
-    .getByRole("button", { name: "JSON 내보내기", exact: true })
+  await expect(
+    page.getByRole("heading", { name: "받은 JSON 파일을 가져오세요" }),
+  ).toBeVisible();
+  await upload.setInputFiles(jsonFile(fixture));
+  await page.getByLabel("내용과 정답을 확인했습니다.").check();
+  await page.route("**/api/library/save", (route) =>
+    route.fulfill({ status: 500, json: { error: "저장 재시도 확인" } }),
+  );
+  await page.getByRole("button", { name: "학습팩 저장", exact: true }).click();
+  await expect(page.locator("#main").getByRole("alert")).toContainText(
+    "저장 재시도 확인",
+  );
+  await page.unroute("**/api/library/save");
+  await page.route("**/api/bootstrap", (route) =>
+    route.fulfill({ status: 500, json: { error: "목록 갱신 실패" } }),
+  );
+  let saves = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/library/save")) saves++;
+  });
+  await page.getByRole("button", { name: "학습팩 저장", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "학습팩을 저장했어요" }),
+  ).toBeVisible();
+  await expect(page.locator("#main").getByRole("alert")).toContainText(
+    "학습팩은 저장됐습니다",
+  );
+  await expect(
+    page.getByRole("button", { name: "학습팩 저장", exact: true }),
+  ).toHaveCount(0);
+  await page.unroute("**/api/bootstrap");
+  await page.getByRole("button", { name: "바로 학습하기" }).click();
+  await expect(
+    page.getByRole("tab", { name: "문제 풀기", exact: true }),
+  ).toBeVisible();
+  expect(saves).toBe(1);
+  const data = await (await page.request.get("/api/bootstrap")).json();
+  expect(
+    data.packs.filter((p: { title: string }) => p.title === fixture.title),
+  ).toHaveLength(1);
+});
+
+test("prompt retry and clipboard fallback remain usable on narrow screens", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: async () => {
+          throw new Error("denied");
+        },
+      },
+    }),
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "메뉴 열기", exact: true }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "학습팩 만들기", exact: true })
     .click();
-  const file = await downloading;
-  const exportPath = testInfo.outputPath("study-pack.json");
-  await file.saveAs(exportPath);
-  await upload.setInputFiles(exportPath);
-  await expect(page.getByLabel("학습팩 제목", { exact: true })).toHaveValue(
-    title,
+  await page.getByLabel("학습팩 제목", { exact: true }).fill("자료구조");
+  await page.getByLabel("학습 목표와 수준").fill("기초");
+  await page.route("**/api/library/prompt", (route) =>
+    route.fulfill({ status: 500, json: { error: "다시 요청해 주세요" } }),
   );
   await page
-    .getByRole("combobox", { name: "편집할 문제", exact: true })
-    .selectOption("1");
-  await expect(
-    page.getByRole("textbox", { name: "문제 내용", exact: true }),
-  ).toHaveValue("추가한 연습 문제");
-  await expect(page.getByLabel("3번 정답", { exact: true })).toBeChecked();
-  await page
-    .getByRole("combobox", { name: "편집할 문제", exact: true })
-    .selectOption("0");
-  await expect(
-    page.getByRole("textbox", { name: "문제 내용", exact: true }),
-  ).toHaveValue(sample.questions[0].question);
-  await page.getByLabel("내용과 정답을 확인했습니다.").check();
-  await page
-    .getByRole("button", { name: "내 학습팩에 저장", exact: true })
+    .getByRole("button", { name: "프롬프트 만들기", exact: true })
     .click();
-  await expect(
-    page.locator(".managed-pack").filter({ hasText: title }),
-  ).toHaveCount(2);
+  await expect(page.locator("#main").getByRole("alert")).toContainText(
+    "다시 요청",
+  );
+  await page.unroute("**/api/library/prompt");
+  await page
+    .getByRole("button", { name: "프롬프트 만들기", exact: true })
+    .click();
+  await page.getByRole("button", { name: "프롬프트 복사하고 다음" }).click();
+  await expect(page.getByLabel("GPT에 보낼 프롬프트")).toBeVisible();
+  await expect(page.getByLabel("GPT에 보낼 프롬프트")).toHaveValue(/자료구조/);
+  await stage(page, "프롬프트를 복사하세요", testInfo, "manual-copy-320", true);
+  await page.getByRole("button", { name: "직접 복사했어요 · 다음" }).click();
+  await stage(
+    page,
+    "ChatGPT에 자료와 함께 보내세요",
+    testInfo,
+    "gpt-320",
+    true,
+  );
+  await page.getByRole("button", { name: "JSON 파일을 받았어요" }).click();
+  await stage(
+    page,
+    "받은 JSON 파일을 가져오세요",
+    testInfo,
+    "import-320",
+    true,
+  );
 });

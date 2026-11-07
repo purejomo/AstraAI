@@ -1,9 +1,9 @@
 {
   "name": "astraai-desktop",
   "productName": "AstraAI",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
-  "description": "내 자료로 직접 만드는 개인 문제은행과 학습실",
+  "description": "GPT가 만든 문제 파일로 공부하고 오답을 복습하는 학습 앱",
   "author": "purejomo",
   "license": "SEE LICENSE IN LICENSE",
   "main": "main.mjs",

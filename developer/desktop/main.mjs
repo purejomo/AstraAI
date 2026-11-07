@@ -66,7 +66,19 @@ function createWindow() {
       spellcheck: false,
     },
   });
-  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    // Only this user-clicked link may open the system browser. No prompt,
+    // attachment, cookie or desktop token is sent with it.
+    if (url === "https://chatgpt.com/") {
+      void shell.openExternal(url).catch(() => {
+        dialog.showErrorBox(
+          "브라우저를 열지 못했습니다",
+          "브라우저에서 https://chatgpt.com 을 열어 주세요.",
+        );
+      });
+    }
+    return { action: "deny" };
+  });
   window.webContents.on("will-navigate", (event, url) => {
     if (!sameOrigin(url, origin)) event.preventDefault();
   });

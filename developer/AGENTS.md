@@ -6,6 +6,6 @@
 - Work directly on `main`. Do not create feature branches or pull requests unless the owner explicitly asks. Retired plans, conversational progress logs and superseded specifications do not belong in the repository.
 - Run commands from `developer/`: lint, typecheck, unit tests, production build and applicable Playwright tests. Windows CI verifies both the rebuilt app and the exact installer distributed in the root.
 - Keep the root executable and `distribution.json` synchronized. The installer is stored with Git LFS because it exceeds GitHub's ordinary file limit. Check the actual binary after downloading it; a pointer is not an installer.
-- Preserve the working authoring/import/edit/export -> study -> grading -> review flow and responsive accessible interface.
+- Keep pack creation focused on conditions -> copy prompt -> ChatGPT generates a downloadable JSON file -> import -> review/save -> study -> grading -> review. Show one task per screen. Do not add manual question editors or unrelated features. Preserve responsive accessibility.
 - Preserve installed user data. Do not weaken loopback Host/Origin checks, per-launch desktop tokens, renderer isolation or sandboxing. Use isolated temporary data for tests.
 - No paid service, repository visibility change, external deployment, or environment publication unless authorized by the owner. Never commit credentials or personal study data.

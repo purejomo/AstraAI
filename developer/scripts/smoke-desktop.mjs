@@ -67,43 +67,59 @@ try {
     "AstraAI clipboard check"
   )
     throw new Error("Clipboard copy failed");
-  const prompt = await page.evaluate(async () => {
-    const response = await fetch("/api/library/prompt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "앱 실행 확인", level: "기초", count: 3 }),
-    });
-    return (await response.json()).prompt;
-  });
-  if (!prompt?.includes("3문항")) throw new Error("Bundled prompt is missing");
   await page
     .getByRole("navigation", { name: "주 메뉴" })
-    .getByRole("button", { name: "나의 문제은행", exact: true })
+    .getByRole("button", { name: "학습팩 만들기", exact: true })
     .click();
+  await page.getByLabel("학습팩 제목", { exact: true }).fill("앱 실행 확인");
+  await page.getByLabel("학습 목표와 수준").fill("기초");
+  await page.getByLabel("문항 수", { exact: true }).fill("3");
   await page
-    .getByRole("button", { name: "샘플로 시작하기", exact: true })
+    .getByRole("button", { name: "프롬프트 만들기", exact: true })
     .click();
-  await page.getByLabel("내용과 정답을 확인했습니다.").check();
-  await page
-    .getByRole("button", { name: "내 학습팩에 저장", exact: true })
-    .click();
-  const exportedFile = path.join(directory, "exported-study-pack.json");
-  await instance.evaluate(({ session }, file) => {
-    session.defaultSession.once("will-download", (_event, item) =>
-      item.setSavePath(file),
-    );
-  }, exportedFile);
-  await page
-    .getByRole("button", { name: "JSON 내보내기", exact: true })
-    .click();
+  await page.getByRole("button", { name: "프롬프트 복사하고 다음" }).click();
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT에 자료와 함께 보내세요" }),
+  ).toBeVisible();
+  const copied = await instance.evaluate(({ clipboard }) =>
+    clipboard.readText(),
+  );
+  if (
+    !copied.includes("3문항") ||
+    !copied.includes("study-pack.json") ||
+    !copied.includes("앱 실행 확인")
+  )
+    throw new Error("Bundled prompt was not copied");
+  // Verify the browser handoff without opening or contacting an external service.
+  await instance.evaluate(({ shell }) => {
+    globalThis.astraOpenedURLs = [];
+    shell.openExternal = async (url) => {
+      globalThis.astraOpenedURLs.push(url);
+    };
+  });
+  await page.getByRole("link", { name: "ChatGPT 열기" }).click();
   await expect
-    .poll(
-      async () =>
-        JSON.parse(await readFile(exportedFile, "utf8").catch(() => "{}"))
-          .schema_version,
-    )
-    .toBe("1.0");
-  await page.getByRole("button", { name: "학습하기", exact: true }).click();
+    .poll(() => instance.evaluate(() => globalThis.astraOpenedURLs))
+    .toEqual(["https://chatgpt.com/"]);
+  await page.evaluate(() => {
+    window.open("https://example.com/");
+    window.open("https://chatgpt.com/?q=secret");
+    window.open("file:///tmp/private");
+  });
+  expect(await instance.evaluate(() => globalThis.astraOpenedURLs)).toEqual([
+    "https://chatgpt.com/",
+  ]);
+  expect(instance.windows()).toHaveLength(1);
+  expect(new URL(page.url()).origin).toBe(origin);
+  await page.getByRole("button", { name: "JSON 파일을 받았어요" }).click();
+  await page
+    .getByLabel("학습팩 JSON 파일")
+    .setInputFiles(path.resolve("examples/sample-study-pack.json"));
+  await page.getByLabel("내용과 정답을 확인했습니다.").check();
+  await page.getByRole("button", { name: "학습팩 저장", exact: true }).click();
+  await page
+    .getByRole("button", { name: "바로 학습하기", exact: true })
+    .click();
   await page.getByRole("tab", { name: "문제 풀기", exact: true }).click();
   await page.getByRole("button", { name: "퀴즈 시작", exact: true }).click();
   await page.getByRole("radio").nth(1).check();
@@ -136,14 +152,19 @@ try {
   // Leave an incomplete draft to verify stable origin and Chromium profile reuse.
   await page
     .getByRole("navigation", { name: "주 메뉴" })
-    .getByRole("button", { name: "나의 문제은행", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "새 학습팩 만들기", exact: true })
+    .getByRole("button", { name: "학습팩 만들기", exact: true })
     .click();
   await page
     .getByRole("textbox", { name: "학습팩 제목", exact: true })
     .fill("재시작 후 이어 쓰는 초안");
+  await page.getByLabel("학습 목표와 수준").fill("기초 복습");
+  await page
+    .getByRole("button", { name: "프롬프트 만들기", exact: true })
+    .click();
+  await page.getByRole("button", { name: "프롬프트 복사하고 다음" }).click();
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT에 자료와 함께 보내세요" }),
+  ).toBeVisible();
   const previousOrigin = origin;
   await instance.close();
   instance = undefined;
@@ -175,8 +196,13 @@ try {
   await expect(reopened.locator(".pack-card")).toHaveCount(1);
   await reopened
     .getByRole("navigation", { name: "주 메뉴" })
-    .getByRole("button", { name: "나의 문제은행", exact: true })
+    .getByRole("button", { name: "학습팩 만들기", exact: true })
     .click();
+  await expect(
+    reopened.getByRole("heading", { name: "ChatGPT에 자료와 함께 보내세요" }),
+  ).toBeVisible();
+  await reopened.getByRole("button", { name: "이전", exact: true }).click();
+  await reopened.getByRole("button", { name: "이전", exact: true }).click();
   await expect(
     reopened.getByRole("textbox", { name: "학습팩 제목", exact: true }),
   ).toHaveValue("재시작 후 이어 쓰는 초안");
@@ -186,7 +212,7 @@ try {
     .click();
   await expect(reopened.locator(".review")).toHaveCount(1);
   console.log(
-    "Desktop smoke passed: packaged assets, protected renderer/API, authoring, grading, single instance, shutdown and persisted state/draft after restart.",
+    "Desktop smoke passed: packaged assets, protected renderer/API, GPT prompt, clipboard, browser handoff, JSON import, grading, single instance, shutdown and persisted state/prompt progress after restart.",
   );
 } catch (error) {
   console.error(errors.join("\n"));
