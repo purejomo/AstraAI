@@ -9,3 +9,8 @@ playwright-report/
 test-results/
 coverage/
 next-env.d.ts
+
+.desktop/
+release/
+desktop/assets/*.png
+desktop/assets/*.ico

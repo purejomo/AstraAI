@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
+  output: process.env.ASTRA_DESKTOP_BUILD === "1" ? "standalone" : undefined,
   poweredByHeader: false,
   agentRules: false,
   experimental: { cpus: 2 },

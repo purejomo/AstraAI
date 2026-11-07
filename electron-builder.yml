@@ -1,0 +1,44 @@
+appId: io.github.purejomo.astraai
+productName: AstraAI
+executableName: AstraAI
+copyright: Copyright © purejomo
+publish: null
+asar: true
+npmRebuild: false
+directories:
+  app: desktop
+  output: release
+  buildResources: desktop/assets
+files:
+  - main.mjs
+  - runtime.mjs
+  - package.json
+  - assets/icon.png
+  - "!node_modules/**"
+extraResources:
+  # Nest server/ so electron-builder does not exclude root node_modules.
+  - from: .desktop
+    to: .
+    filter: ["server/**"]
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: desktop/assets/icon.ico
+  artifactName: AstraAI-Setup-${version}-${arch}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: AstraAI
+  runAfterFinish: false
+  deleteAppDataOnUninstall: false
+  installerLanguages: [ko_KR, en_US]
+  language: 1042
+linux:
+  executableName: AstraAI
+  icon: desktop/assets/icon.png
+  category: Education

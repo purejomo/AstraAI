@@ -161,6 +161,7 @@ export type ReviewView = Review & {
   back?: string;
 };
 export type Bootstrap = {
+  storageMode: "desktop" | "folder";
   user: Profile | null;
   legacyHistories: LegacyHistory[];
   packs: PublicPack[];

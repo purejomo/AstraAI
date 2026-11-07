@@ -1,0 +1,51 @@
+name: Windows app
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run desktop:win
+      - name: Install in the current user profile
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release/AstraAI-Setup-*-x64.exe | Select-Object -First 1
+          $result = Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Installer failed: $($result.ExitCode)" }
+          $installed = Join-Path $env:LOCALAPPDATA 'Programs/AstraAI/AstraAI.exe'
+          if (!(Test-Path $installed)) { throw "Installed executable not found: $installed" }
+          "ASTRA_DESKTOP_EXECUTABLE=$installed" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - run: npm run test:desktop
+      - name: Write installer checksum
+        shell: pwsh
+        run: |
+          Get-ChildItem release/AstraAI-Setup-*-x64.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File release/SHA256SUMS.txt -Encoding utf8 -Append
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AstraAI-Windows-x64
+          path: |
+            release/AstraAI-Setup-*-x64.exe
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: desktop-test-results
+          path: test-results/
+          retention-days: 7

@@ -1,0 +1,11 @@
+{
+  "name": "astraai-desktop",
+  "productName": "AstraAI",
+  "version": "0.2.0",
+  "private": true,
+  "description": "내 자료로 직접 만드는 개인 문제은행과 학습실",
+  "author": "purejomo",
+  "license": "UNLICENSED",
+  "main": "main.mjs",
+  "type": "module"
+}

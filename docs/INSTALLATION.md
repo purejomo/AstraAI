@@ -1,6 +1,6 @@
 # 설치·사용 안내
 
-이 안내는 개인 PC에서 AstraAI를 설치하고 사용하는 방법입니다. 설치본을 다른 사람에게 인터넷으로 공개하는 방법은 [온라인 운영 안내](HOSTING.md)에서 확인하세요.
+이 안내는 소스 코드로 AstraAI를 설치하는 방법입니다. 실행 파일만으로 사용하려면 [Windows 앱 안내](WINDOWS_APP.md)를 따르세요. 설치본을 다른 사람에게 인터넷으로 공개하는 방법은 [온라인 운영 안내](HOSTING.md)에서 확인하세요.
 
 ## 준비
 
@@ -8,7 +8,7 @@
 - [Git](https://git-scm.com/): 저장소를 내려받고 업데이트할 때 사용합니다.
 - 비공개 저장소의 접근 권한: `Repository not found`가 나타나면 소유자에게 접근 권한을 요청하고 GitHub 로그인을 확인하세요. 비밀번호나 토큰을 채팅에 보내지 마세요.
 
-현재 앱 코드는 `feat/cloud-study-mvp` 브랜치에 있습니다. 이미 복제한 저장소에서는 `git branch --show-current`로 현재 브랜치를 확인할 수 있습니다.
+현재 앱 코드는 `main` 브랜치에 있습니다. 이미 복제한 저장소에서는 `git branch --show-current`로 현재 브랜치를 확인할 수 있습니다.
 
 ## Windows PowerShell
 
@@ -17,7 +17,7 @@
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\source" | Out-Null
 Set-Location "$env:USERPROFILE\source"
-git clone --branch feat/cloud-study-mvp https://github.com/purejomo/AstraAI.git
+git clone --branch main https://github.com/purejomo/AstraAI.git
 Set-Location AstraAI
 node --version
 npm.cmd ci
@@ -32,7 +32,7 @@ npm.cmd start
 ```sh
 mkdir -p "$HOME/source"
 cd "$HOME/source"
-git clone --branch feat/cloud-study-mvp https://github.com/purejomo/AstraAI.git
+git clone --branch main https://github.com/purejomo/AstraAI.git
 cd AstraAI
 node --version
 npm ci

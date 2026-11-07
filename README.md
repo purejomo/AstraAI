@@ -1,6 +1,6 @@
 # AstraAI · 나의 학습실
 
-내 자료로 학습팩을 만들고, 개념 학습·퀴즈·오답 복습을 이어가는 개인 학습 앱입니다. 코드를 내려받은 누구나 자기 PC에서 개념과 문제를 직접 만들고 공부할 수 있습니다.
+내 자료로 학습팩을 만들고, 개념 학습·퀴즈·오답 복습을 이어가는 개인 학습 앱입니다. 설치 파일을 받은 사람이나 코드를 내려받은 사람 누구나 자기 PC에서 개념과 문제를 직접 만들고 공부할 수 있습니다.
 
 **현재 제공 버전은 개인 PC에 설치해 사용하는 방식입니다.** 앱을 열면 바로 내 학습실이 시작됩니다. 인터넷에서 여러 사람이 접속하는 운영 방식은 아직 지원하지 않습니다.
 
@@ -15,16 +15,24 @@
 
 [PC 화면](docs/screenshots/dashboard-desktop.png) · [모바일 화면](docs/screenshots/dashboard-mobile.png)
 
-## 설치하고 시작하기
+## Windows 앱으로 시작하기
 
-Git과 Node.js 22 이상을 준비하세요. 현재 실행 가능한 코드는 `feat/cloud-study-mvp` 브랜치에 있습니다. 저장소가 비공개이므로 다운로드하려면 접근 권한이 필요합니다.
+`AstraAI-Setup-0.2.0-x64.exe`를 실행해 설치하고 바탕화면의 **AstraAI**를 여세요. **Git·Node.js 설치나 GitHub 로그인, 터미널 실행 없이** 나의 문제은행을 사용할 수 있습니다. 설치 파일을 받은 뒤에는 문제 만들기·학습·복습을 오프라인으로 사용할 수 있습니다.
+
+현재 공개 다운로드 주소는 준비 중입니다. 비공개 GitHub 저장소의 다운로드에는 로그인이 필요하지만, 설치 파일을 직접 전달받은 사람은 로그인 없이 실행할 수 있습니다. 초기 설치 파일은 코드 서명이 없어 Windows의 게시자 확인 화면이 나타날 수 있습니다.
+
+설치·업데이트·기존 기록 옮기기는 [Windows 앱 안내](docs/WINDOWS_APP.md)를 참고하세요.
+
+## 소스 코드로 설치하기
+
+Git과 Node.js 22.12 이상을 준비하세요. 소스로 실행하는 학습 앱은 `main` 브랜치에 있습니다. 저장소가 비공개이므로 다운로드하려면 접근 권한이 필요합니다.
 
 Windows PowerShell에서 한 줄씩 실행하세요.
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\source" | Out-Null
 Set-Location "$env:USERPROFILE\source"
-git clone --branch feat/cloud-study-mvp https://github.com/purejomo/AstraAI.git
+git clone --branch main https://github.com/purejomo/AstraAI.git
 Set-Location AstraAI
 npm.cmd ci
 npm.cmd run build
@@ -76,7 +84,7 @@ macOS/Linux 설치, 업데이트, 백업 및 오류 해결은 [설치·사용 �
 
 ## 기록 보관
 
-학습팩과 기록은 설치 폴더의 `.local/study.json`에 저장됩니다. 새로고침이나 앱 재실행 후에도 유지되지만, 이 파일을 삭제하면 기록도 사라집니다. 앱을 종료한 상태에서 `.local` 폴더를 별도로 백업하세요. 작성 중인 내용은 이 브라우저에 임시 보관되므로, 백업에 포함하려면 학습팩을 저장하거나 JSON을 내려받으세요.
+Windows 앱은 `%APPDATA%\AstraAI\data\study.json`, 소스 실행 버전은 설치 폴더의 `.local/study.json`에 저장합니다. 새로고침이나 앱 재실행 후에도 유지되지만, 이 파일을 삭제하면 기록도 사라집니다. 앱을 종료한 상태에서 해당 데이터 폴더를 별도로 백업하세요. 작성 중인 내용은 이 브라우저에 임시 보관되므로, 백업에 포함하려면 학습팩을 저장하거나 JSON을 내려받으세요.
 
 이전 버전에서 업데이트하면 기존 학습팩과 기록을 이어 씁니다. 기본은 이전 학습자 1 기록이며, 학습자 2·3 기록이 있다면 **설정 및 도움말 → 이전 버전 기록 이어 쓰기**에서 선택할 수 있습니다. 기록을 자동으로 합치거나 삭제하지 않습니다.
 

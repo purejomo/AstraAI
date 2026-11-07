@@ -60,3 +60,9 @@ Storage.transaction → 단일 프로세스 FileStorage (.local/study.json)
 ## 디자인
 
 [Taste Skill](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill/SKILL.md)을 타이포그래피·정렬·색상·간격·포커스·모션의 참고로 사용한다. 사용자 요구에 맞는 실제 학습 도구를 직접 구현하며 마케팅용 전면 히어로나 사진 템플릿을 복제하지 않는다. 입력은 섹션별로 나누고 문항 하나씩 편집해 큰 JSON도 다룰 수 있도록 한다.
+
+## Windows 앱 패키징
+
+Electron 전용 창과 동봉한 Next standalone 서버를 현재 사용자용 `.exe` 설치 파일로 제공한다. 사용자 PC의 Git·Node.js에 의존하지 않는다. `utilityProcess`로 서버를 실행하고 앱 종료 시 함께 정리한다. 렌더러의 Node 접근은 차단하고 sandbox/contextIsolation과 자체 출처의 실행별 비밀 헤더를 적용한다. 기존 웹 실행의 Host/Origin 정책은 유지한다.
+
+앱의 학습 기록은 `%APPDATA%\AstraAI\data`에 저장해 프로그램 업데이트와 분리한다. 포트/Chromium 프로필을 유지해 초안도 이어 쓴다. 빌드·검증·공개 배포 경계는 [DESKTOP.md](DESKTOP.md)를 따른다.

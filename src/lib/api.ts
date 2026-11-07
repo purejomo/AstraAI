@@ -116,6 +116,14 @@ export async function handle(
     if (req.method !== "GET" && req.headers.get("origin") !== authority.origin)
       throw new AppError("요청 출처를 확인할 수 없습니다.", 403);
     const route = url.pathname.replace(/^\/api\//, "");
+    const desktopToken = process.env.ASTRA_DESKTOP_TOKEN;
+    if (
+      desktopToken &&
+      req.headers.get("x-astra-desktop-token") !== desktopToken
+    )
+      throw new AppError("앱에서 학습실을 열어 주세요.", 403);
+    if (desktopToken && req.method === "GET" && route === "desktop/health")
+      return json({ desktop: true });
     const input = req.method === "POST" ? await body(req) : {};
     const token = req.headers
       .get("cookie")
@@ -210,6 +218,7 @@ export async function handle(
               })
           : [];
         return json({
+          storageMode: desktopToken ? "desktop" : "folder",
           user: user || null,
           packs,
           legacyHistories: user ? legacyHistories(state) : [],
