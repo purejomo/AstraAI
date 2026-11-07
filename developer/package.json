@@ -1,0 +1,46 @@
+{
+  "name": "astraai",
+  "version": "0.2.1",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "desktop:prepare": "node scripts/build-desktop.mjs",
+    "desktop": "electron desktop",
+    "desktop:pack": "npm run desktop:prepare && electron-builder --dir --publish never",
+    "desktop:win": "npm run desktop:prepare && electron-builder --win nsis --x64 --publish never",
+    "test:desktop": "node scripts/smoke-desktop.mjs",
+    "verify:installer": "node scripts/verify-installer.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "lucide-react": "^0.468.0",
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.0",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "16.4.5",
+    "prettier": "3.9.10",
+    "sharp": "0.35.5",
+    "typescript": "^5.9.3",
+    "vitest": "5.1.0"
+  },
+  "license": "SEE LICENSE IN ../LICENSE"
+}

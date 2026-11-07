@@ -1,0 +1,77 @@
+name: Windows installer
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        "developer/**",
+        "AstraAI-Setup.exe",
+        ".gitattributes",
+        ".github/workflows/desktop.yml",
+      ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: developer
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: developer/package-lock.json
+      - run: npm ci
+      - run: npm run verify:installer
+      - run: npm run desktop:win
+      - name: Install the rebuilt app
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release/AstraAI-Setup-*-x64.exe | Select-Object -First 1
+          $result = Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Installer failed: $($result.ExitCode)" }
+          $installed = Join-Path $env:LOCALAPPDATA 'Programs/AstraAI/AstraAI.exe'
+          if (!(Test-Path $installed)) { throw "Installed executable not found: $installed" }
+          "ASTRA_DESKTOP_EXECUTABLE=$installed" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Verify installed license files
+        shell: pwsh
+        run: |
+          $resources = Join-Path (Split-Path $env:ASTRA_DESKTOP_EXECUTABLE) 'resources'
+          $license = Get-Content (Join-Path $resources 'licenses/AstraAI-LICENSE.txt') -Raw
+          if (!$license.Contains('AstraAI Noncommercial License')) { throw 'Project license missing' }
+          foreach ($notice in @('next/license.md', 'react/LICENSE')) {
+            if (!(Test-Path (Join-Path $resources "licenses/third-party/node_modules/$notice"))) {
+              throw "Third-party license missing: $notice"
+            }
+          }
+      - name: Test the rebuilt app
+        run: npm run test:desktop
+      - name: Install the exact executable distributed on main
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path ../AstraAI-Setup.exe).Path
+          $result = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Distributed installer failed: $($result.ExitCode)" }
+      - name: Test the distributed app
+        run: npm run test:desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rebuilt-windows-installer
+          path: developer/release/AstraAI-Setup-*-x64.exe
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: desktop-test-results
+          path: developer/test-results/
+          retention-days: 7
