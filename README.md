@@ -1,56 +1,98 @@
-# AstraAI
+# AstraAI · 나의 학습실
 
-개인용 학습 도우미 프로젝트. 대학생과 자격증 수험생을 위한 3명 초대제 웹앱을 개발합니다.
+관리자가 만든 학습팩으로 개념을 읽고, 문제를 풀고, 오답을 복습하는 개인 학습 앱입니다. **현재 버전은 Codex Cloud / 로컬 개발 데모**입니다. Next.js + TypeScript로 구현했으며, Supabase·Vercel·실사용자 인증·외부 배포는 연결하지 않았습니다.
 
-> 현재 상태: **최종 설계 확정 / 애플리케이션 구현 전**. 이 저장소에 설계, 데이터 규약, ChatGPT 수동 생성 프롬프트, 테스트 기준을 기록합니다. 현시점에는 실행 가능한 웹앱 코드가 없습니다.
+## 바로 실행하기
 
-## 확정된 핵심 원칙
+Node.js 22 이상과 npm이 필요합니다. macOS/Linux와 Windows PowerShell에서 같은 명령을 사용합니다.
 
-- 운영자(관리자) 1명이 **자신의 ChatGPT Pro**에서 문제은행과 학습 콘텐츠를 생성합니다.
-- 생성물은 **UTF-8 JSON 파일(`study-pack.json`)**로 저장합니다.
-- 운영자가 앱에 JSON을 업로드하고 검증한 뒤 **초대한 학습자 3명**에게 게시합니다.
-- 3명은 **각자의 계정과 학습 기록**을 가지며, ChatGPT 로그인/토큰/API 키가 필요 없습니다.
-- 정답·오답·반복 학습 기반으로 개인별 학습 성과 및 복습 일정을 **규칙 기반**으로 계산합니다.
-- 과목은 고정하지 않습니다. 대학 강의나 자격증 등 어떤 분야도 동일한 JSON 계약으로 지원합니다.
-- PC 웹 우선, 390px 모바일 화면까지 대응. 추후 iOS/Android에서 사용할 수 있도록 PWA를 확장합니다.
-- API 과금 금지, 초기 운영비 0원 목표. 무료 호스팅·DB의 제한과 휴면 중단 가능성은 존재합니다.
-- ChatGPT 대화/세션을 크롤링하거나 인증 토큰을 재사용하지 않습니다.
-- Astra의 학습 UX는 벤치마킹하되 상표/화면 자산/전용 카피를 복제하지 않습니다.
+```sh
+npm ci
+npm run dev
+```
 
-## 관리자의 학습 콘텐츠 생성 절차
+브라우저에서 로컬 포트 3000을 열고 데모 계정을 선택합니다. Cloud에서는 기존 체크아웃 `/workspace/AstraAI`에서 작업하며, 준비된 Node 22를 사용하려면 먼저 `source /workspace/.astraai-tools/activate.sh`를 실행합니다. 새 worktree는 필요하지 않습니다.
 
-1. 앱에서 과목·시험 목표·문항 수 등을 지정합니다.
-2. [생성 프롬프트](prompts/GENERATE_STUDY_PACK.md)를 복사하여 관리자 본인의 ChatGPT 대화에 붙여넣습니다.
-3. 해당 학습 자료 PDF 또는 이미지를 **ChatGPT 대화에도 직접 첨부**합니다. 앱은 이를 자동 전송하지 않습니다.
-4. ChatGPT가 제공한 `study-pack.json`을 내려받습니다.
-5. 앱의 관리자 화면에서 업로드하여 [JSON 규약](schemas/study-pack.schema.json)을 검사하고 미리 봅니다.
-6. 관리자가 승인 및 게시하면 초대된 3명에게 노출됩니다.
-7. 학습자들은 퀴즈·플래시카드·오답노트·계획·진도 화면을 사용합니다.
+개발·프로덕션 테스트 서버 모두 기본적으로 `127.0.0.1`에만 바인딩합니다. API도 로컬 Host와 변경 요청의 동일 Origin을 검사합니다. 배포 가능한 실제 인증을 대신하는 장치가 아니므로 이 데모를 공개 서비스로 노출하지 마세요.
 
-## 문서
+```sh
+npm run build
+npm run start
+```
 
-- [최종 PRD](docs/PRD_FINAL.md): 역할, 화면, 기능, 수용 기준
-- [시스템 아키텍처](docs/ARCHITECTURE.md): Windows, 웹 배포, 데이터/보안, 서버 API
-- [데이터 계약](docs/DATA_CONTRACT.md) 및 [JSON Schema](schemas/study-pack.schema.json)
-- [ChatGPT 생성 프롬프트](prompts/GENERATE_STUDY_PACK.md)
-- [개발/테스트 체크리스트](docs/IMPLEMENTATION_PLAN.md)
-- [데이터 샘플](examples/sample-study-pack.json)
+## 첫 학습 흐름
 
-## 개발 기술(설계 확정, 아직 구현 안 됨)
+1. **관리자**로 입장합니다. 제목·목표·문항 수로 프롬프트를 만들고 복사합니다.
+2. 관리자가 자신의 ChatGPT 대화에 프롬프트와 원본 PDF/이미지를 직접 첨부합니다. 앱은 자동 전송하지 않습니다.
+3. 내려받은 UTF-8 `study-pack.json`을 업로드하거나 JSON을 붙여 넣습니다. **샘플 불러오기**로 저장소의 예제도 사용할 수 있습니다.
+4. 검증 → 정답·해설·출처 미리보기 → 내용 검수 확인 → **초안 저장**을 진행합니다.
+5. 공유할 데모 학습자 1~3명을 선택한 뒤 **게시**합니다. 이 버튼은 로컬 앱 안에서 학습팩을 공개하며 외부 배포를 수행하지 않습니다.
+6. 상단에서 **학습자 1**로 전환해 개념/FAQ를 읽고 퀴즈를 풉니다. 정답은 제출 후 서버에서 채점합니다.
+7. **오답과 복습**에서 해설과 일정을 확인하고 재응시합니다. 플래시카드·모의고사·목표·현황도 같은 학습팩에서 사용할 수 있습니다.
 
-- Next.js + TypeScript (PC 및 모바일 반응형)
-- Supabase Free: 인증, PostgreSQL, 초대자 3명 학습 기록
-- Vercel Hobby: 비상업적 개인용 공개 HTTPS 웹 배포
-- 관리자 화면의 JSON 입력·스키마 검증; 배포 후 학습 데이터 공유
-- 별도 FastAPI 서버, 유료 AI API, 로컬 LLM, GPU 실행은 사용하지 않음
-- Taste Skill의 차분한 타이포그래피·그리드·상호작용 원칙을 참고하되 대시보드에 맞게 독자적으로 구현
+화면에 표시되는 계정 전환은 **개발/데모 전용**입니다. 누구나 관리자 계정으로 전환할 수 있어 실제 인증으로 사용할 수 없습니다. 각 데모 세션은 HttpOnly 쿠키로 식별하며 서버는 세션의 사용자/역할을 기준으로 요청을 처리합니다. 클라이언트가 보낸 `userId`나 정답은 신뢰하지 않습니다.
 
-개발용 PC는 Windows PowerShell을 기준으로 합니다. 코드가 추가된 이후 `git clone https://github.com/purejomo/AstraAI.git`, `npm install`, `npm run dev` 흐름을 지원합니다. 현재는 소스 앱이 없으므로 `npm run dev`는 실행되지 않습니다.
+## 구현 기능
 
-## 보안
+- JSON Schema draft 2020-12 + 5MB/500문항 제한 + ID 고유성 + 개념 참조 + 보기 정규화/중복 + 출처 파일 검사.
+- 검수 전 초안/게시 분리, 학습자별 공유, 비공개, 불변 개정본. 개정 후에도 과거 응시의 정답과 해설 유지.
+- 개념·핵심 내용·FAQ, 범위/문항 수 선택, 서버 출제/채점, 힌트, 답안 초안과 진행 중 학습 복원.
+- 오답 1일, 연속 정답 3/7/14일 복습. 플래시카드 기억 여부도 같은 규칙 적용.
+- 모의고사 제한 시간·문항 이동·시간 만료 자동 제출. 서버 마감 후 5초를 넘긴 제출은 미응답 처리. 브라우저를 닫으면 다시 열어 이어갈 때 만료 처리.
+- 개인별 시험일/공부 시간, 취약·미학습 개념 우선 계획, 최근 10번 기준 개념별 이해도, 응시 이력.
+- 개인 데모 기록 삭제 확인, 데스크톱/모바일 메뉴, 키보드 조작, 줄인 모션 설정.
 
-- 저장소는 Private입니다. 비밀번호, ChatGPT 쿠키/세션, API 키, Supabase service-role 키를 커밋하지 않습니다.
-- 초대 링크는 1회용이고 만료됩니다. 공개 가입은 차단합니다.
-- 관리자만 문제은행을 등록·수정·게시할 수 있고, 학습 기록은 회원별 격리(RLS)합니다.
+원본 자료의 사실관계와 보기의 **의미상** 중복은 관리자 검수가 필요합니다. 스키마 검증은 콘텐츠의 정확성을 보증하지 않습니다. AI 생성 연습문제이며 실제 기출로 표시하지 않습니다.
 
-2026-11-07 확정.
+## 저장 방식과 한계
+
+`src/lib/storage.ts`의 `Storage` 인터페이스 뒤에 로컬 JSON 파일 어댑터를 둡니다. 기본 파일은 `.local/study.json`이며 Git에 포함하지 않습니다. 하나의 Next.js 프로세스 안에서 변경을 직렬화하고 임시 파일 → 원자적 교체로 기록합니다. 새로고침·프로세스 재시작 후 같은 디렉터리의 데이터는 유지됩니다.
+
+**다중 프로세스/서버리스/공유 네트워크 파일 시스템용 저장소가 아닙니다.** 환경 파일이 삭제되면 데이터도 사라집니다. 기존 파일이 손상됐을 때 새 데이터로 덮어쓰지 않고 오류를 반환합니다. 다른 개발 서버와 테스트 서버가 같은 데이터 디렉터리를 공유하지 마세요. 세션 만료는 24시간입니다.
+
+별도 데이터 디렉터리:
+
+```sh
+# macOS / Linux
+ASTRA_DATA_DIR=/tmp/astra-demo npm run dev
+```
+
+```powershell
+# Windows PowerShell
+$env:ASTRA_DATA_DIR = "$PWD\.local-demo"
+npm run dev
+```
+
+현재 비밀값이나 API 키는 필요하지 않습니다. ChatGPT 쿠키/토큰, 실시간 LLM, OpenAI API, GPU 서버를 사용하지 않습니다.
+
+## 검증
+
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
+# 일반 개발 PC: 테스트용 Chromium 설치
+npx playwright install chromium
+npm run test:e2e
+```
+
+Cloud에는 Chromium이 이미 설치되어 있습니다.
+
+```sh
+CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e
+```
+
+```powershell
+# 설치된 Chrome/Chromium을 지정할 경우에만
+$env:CHROMIUM_PATH = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+npm run test:e2e
+```
+
+E2E는 빌드된 앱을 포트 3100에서 시작하고, 각 실행의 임시 디렉터리를 사용합니다. 개발 데이터는 지우지 않습니다. Playwright 결과/스크린샷은 `test-results/`, HTML 보고서는 `playwright-report/`에 생성되며 Git에서 제외됩니다. `agent-browser`가 없는 Cloud에서는 지침에 따라 Playwright를 사용했습니다.
+
+## 다음 단계
+
+실제 초대/만료 링크·이메일 인증·관리자 역할 검증·Supabase RLS·영속 DB·Vercel 배포·실사용자 PC 간 검증은 **아직 구현/연결되지 않았습니다**. 사용자의 승인 후 별도 작업으로 진행합니다. 그때 사용자 본인의 프로젝트 URL과 키를 안전하게 환경 설정에 입력하고 계정/권한/리디렉션/무료 한도를 확인해야 합니다. 키를 채팅이나 GitHub에 남기지 않습니다.
+
+PWA·푸시·음성 읽기는 PRD의 P2 후속 항목입니다. 자세한 결과와 다음 작업은 [구현 계획](docs/IMPLEMENTATION_PLAN.md), 설계는 [PRD](docs/PRD_FINAL.md), [아키텍처](docs/ARCHITECTURE.md), [데이터 계약](docs/DATA_CONTRACT.md)을 참고하세요.

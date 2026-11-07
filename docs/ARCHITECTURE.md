@@ -55,3 +55,29 @@
 ## 기술 선택
 
 Next.js + TypeScript + CSS/Tailwind + Zod/Ajv JSON Schema 검사 + Supabase JS + Postgres RLS. 단일 Next.js 서버가 API/뷰/UI를 담당하므로 별도 FastAPI, Celery, GPU inference, vector DB가 필요 없음.
+
+## Cloud 단독 MVP 구현 구조 (2026-11-07)
+
+위 배포 구조는 차후 목표다. 현재 실행 버전은 `docs/CODEX_CLOUD_START.md`에 따라 다음 구조를 사용한다.
+
+```text
+브라우저의 데모 계정 선택 (실제 인증 아님)
+  → Next.js App Router UI
+  → /api/[...path] Route Handler
+  → 세션 사용자/역할 확인 · 입력 검증 · 출제/채점
+  → Storage.transaction 인터페이스
+  → 단일 프로세스 FileStorage (.local/study.json)
+```
+
+- `src/lib/validation.ts`: Ajv 2020-12와 교차 참조 검증. 원문/정답은 서버에서만 읽고, 채점 전 출제 DTO에는 정답·해설·오답 피드백을 포함하지 않는다.
+- `src/lib/api.ts`: 로컬 Host 확인, 동일 Origin 변경 요청, 크기 제한 및 UTF-8 파싱, HttpOnly/SameSite=Strict 데모 세션, 관리자/학습자 라우트, 사용자별 기록 확인.
+- `src/lib/storage.ts`: 메모리 Promise 큐로 직렬화하고 원자적 파일 교체로 쓰는 어댑터. 다중 프로세스·서버리스는 지원하지 않으며 Supabase 단계에서 어댑터와 인증을 교체해야 한다.
+- `src/lib/learning.ts`: 서울 날짜 기준 1/3/7/14일 복습, 최근 10번 시도 기반 개념 지표, 공개 응시 DTO.
+- 게시 단위는 불변 revision. 과거 응시와 복습은 원래 revision을 참조한다. 비공개/공유 취소된 학습팩은 새 학습 및 결과 상세 접근에서 거부한다. 자신의 이전 성취 집계와 제목 이력은 유지한다.
+- 데모 계정 네 개는 공개 선택 가능하다. 실제 신원/초대/권한 경계로 주장하지 않는다. 학습자 세션의 관리자 API 거부와 사용자별 기록 분리를 자동 테스트하되, Supabase RLS 검증과 구분한다.
+- 모의고사는 서버 발급 마감 시각을 사용한다. 클라이언트 타이머는 자동 제출을 돕고, 서버 마감 + 전송 유예 5초 이후 요청은 답안 추가를 허용하지 않는다. 미응답은 오답으로 남긴다.
+- 실행/빌드는 외부 폰트/CDN/API 없이 가능하다. 로컬 한국어 시스템 폰트를 사용한다.
+
+## 디자인 적용
+
+[Taste Skill](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill/SKILL.md)의 타이포그래피·일관된 여백/색상·명확한 행동 문구·키보드 포커스·축소 모션 원칙을 학습 앱에 적용했다. 사용자 요청과 PRD에 따라 마케팅 사이트용 전면 히어로/셰이더/사진 템플릿 대신 실제 학습 화면을 구현하고, 데모 표기를 유지했다. 따뜻한 밝은 바탕, 짙은 글자, 절제된 녹색과 1px 경계선을 공통 토큰으로 사용한다. Astra의 자산이나 코드를 복제하지 않는다.
