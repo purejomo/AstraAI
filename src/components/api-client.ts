@@ -1,4 +1,8 @@
-export async function api<T>(path: string, body?: unknown): Promise<T> {
+export async function api<T>(
+  path: string,
+  body?: unknown,
+  retry = true,
+): Promise<T> {
   const response = await fetch(
     `/api/${path}`,
     body === undefined
@@ -9,6 +13,10 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
           body: JSON.stringify(body),
         },
   );
+  if (response.status === 401 && path !== "session" && retry) {
+    await api("session", {}, false);
+    return api<T>(path, body, false);
+  }
   const data = await response.json();
   if (!response.ok)
     throw new Error([data.error, ...(data.details || [])].join("\n"));

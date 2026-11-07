@@ -40,9 +40,11 @@ export function summary(
     };
   });
   const concepts = state.packs
-    .filter((p) => p.publishedId && p.access.includes(userId))
+    .filter((p) => p.revisions.length > 0)
     .flatMap((p) => {
-      const revision = p.revisions.find((v) => v.id === p.publishedId)!;
+      const revision = p.revisions.find(
+        (v) => v.id === (p.publishedId || p.revisions.at(-1)!.id),
+      )!;
       return revision.data.concepts.map((c) => {
         const outcomes = runs
           .filter((r) => r.revisionId === revision.id)
@@ -82,9 +84,7 @@ export function summary(
     (r) =>
       r.userId === userId &&
       r.due <= day(now) &&
-      state.packs.some(
-        (p) => p.id === r.packId && p.publishedId && p.access.includes(userId),
-      ),
+      state.packs.some((p) => p.id === r.packId && p.revisions.length > 0),
   ).length;
   return {
     answered: grades.length,

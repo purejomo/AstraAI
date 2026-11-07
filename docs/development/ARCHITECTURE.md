@@ -1,83 +1,62 @@
-# AstraAI 아키텍처 및 운영 정책
+# AstraAI 아키텍처
 
-## 배포 구조
-
-```text
-[관리자 ChatGPT Pro]  --(수동 업로드/다운로드)--> study-pack.json
-                                                         |
-[관리자 브라우저] ---- (로그인/JSON 검증/승인) --------> [Next.js 웹앱 (Vercel)]
-[3명 학습자 브라우저] ---- (HTTPS, 초대제) ------------> [Next.js 웹앱 (Vercel)]
-                                                         |
-                                                         v
-                                           [Supabase: Auth + Postgres]
-                                           - 학습팩 revision/발행 상태
-                                           - 사용자별 학습 시도
-                                           - 오답 및 다음 복습 일정
-                                           - 시험 목표/학습 계획
-```
-
-앱의 AI API 호출은 0회. 원본 PDF·이미지는 우선 브라우저에서 프롬프트 준비에만 사용하며, ChatGPT에는 관리자가 직접 첨부한다. 앱 저장소에 자동 업로드하지 않음. 관리자 JSON 게시가 유일한 콘텐츠 업데이트 경로.
-
-## 핵심 엔터티
-
-`profiles`(id, role, display_name), `invites`(id, email, token_hash, expires_at, accepted_at), `packs`(id, title, owner_id, published_revision_id), `pack_revisions`(id, pack_id, version, data_json, created_at), `pack_access`(user_id, pack_id), `study_goals`(user_id, pack_id, exam_date, daily_minutes), `quiz_attempts`(id, user_id, pack_revision_id, submitted_at, correct_count), `question_attempts`(id, quiz_attempt_id, user_id, question_id, selected_index, is_correct), `review_state`(user_id, pack_id, question_id, streak, next_due_at).
-
-## 서버 인증/채점
-
-- Supabase Auth를 활용하여 인증하며 클라이언트 제공 user_id를 신뢰하지 않음.
-- 관리자 권한은 로그인 이메일 문자열 비교가 아니라 서버 측 프로필 역할/RLS 정책으로 확인.
-- 일반 사용자의 쿼리는 RLS로 자신에게 배포된 학습팩 및 자신의 기록으로 제한.
-- 정답 보호: 문제 전달 시 정답/설명 필드는 숨기고 제출 API 내에서 채점. 정적 문제은행 JSON을 공개 API로 내려주지 않음.
-- 학습팩 수정은 불변 revision으로 처리하고 응시 기록은 당시 revision을 계속 참조.
-- JSON 크기, 스키마, ID, 참조 무결성 검증은 서버에서 수행.
-- 모든 외부 공개 URL은 HTTPS, 관리자 API는 사용자 세션 + 역할 검사.
-- 인증 초대 처리 실패, 사용정지, 만료/중복 초대 처리에 오류 메시지 제공.
-
-## 사무실 PC (Windows)
-
-- **개발/테스트 워크스테이션**: Intel Core Ultra 7 265, RAM 64GB, RTX A400 4GB.
-- GPU는 필수 아님. AI 요청을 별도 서버로 자동 실행하지 않음.
-- PowerShell에서 Git, Node.js 22 LTS, 브라우저, agent-browser 설치 여부 확인.
-- 코드는 GitHub Private 저장소에서 `git clone`, 최신 변경은 `git pull`.
-- 개발 시작(앱 코드 구현 후): `npm install` → `npm run dev`.
-- agent-browser는 브라우저 E2E 검증 도구. 이를 설치한다고 ChatGPT가 무인 상태에서 PC를 원격 제어할 수 있는 것은 아님.
-
-## 배포/비용
-
-- **첫 권장안**: Vercel Hobby + Supabase Free 조합. 사용자 3명/비상업적 실험 규모의 출발점에 적합하나 무료 제공 범위·휴면 제한·로그인 메일 제한 등은 실제 계정에서 확인 필요.
-- 사무실 PC를 직접 상시 인터넷 서버로 노출하지 않음. 전원·방화벽·포트 개방·네트워크 관리는 피할 수 있음.
-- 계정 소유자가 Vercel/Supabase 프로젝트 연결 및 환경변수 생성/입력을 직접 승인해야 함.
-- API 키, 로그인 쿠키, session token은 채팅·GitHub에 남기지 않는다.
-- 무료 한도 초과 시 자동 유료 과금/유료 플랜 전환을 막도록 운영자가 서비스 설정을 확인.
-- 이메일 발송 제공자의 무료 한도나 비활성 프로젝트 자동 휴면 등으로 접속 장애가 발생할 수 있음.
-- 추후 모바일: 우선 PWA(홈 화면 추가), 다음 단계에서 Expo/React Native 또는 래핑 여부 재검토.
-
-## 기술 선택
-
-Next.js + TypeScript + CSS/Tailwind + Zod/Ajv JSON Schema 검사 + Supabase JS + Postgres RLS. 단일 Next.js 서버가 API/뷰/UI를 담당하므로 별도 FastAPI, Celery, GPU inference, vector DB가 필요 없음.
-
-## Cloud 단독 MVP 구현 구조 (2026-11-07)
-
-위 배포 구조는 차후 목표다. 현재 실행 버전은 `docs/development/CODEX_CLOUD_START.md`에 따라 다음 구조를 사용한다.
+현재 제품은 한 사람이 작성과 학습을 모두 하는 개인 PC용 앱이다. 설치본마다 데이터가 독립적이며 온라인 인증·DB·배포는 [후속 계획](ONLINE_ROADMAP.md)에 있다.
 
 ```text
-브라우저의 데모 계정 선택 (실제 인증 아님)
-  → Next.js App Router UI
-  → /api/[...path] Route Handler
-  → 세션 사용자/역할 확인 · 입력 검증 · 출제/채점
-  → Storage.transaction 인터페이스
-  → 단일 프로세스 FileStorage (.local/study.json)
+브라우저
+  ├─ 나의 문제은행: 직접 작성 / JSON 가져오기 / 수정 / 내보내기
+  ├─ 선택 사항: 프롬프트 복사 → 사용자의 ChatGPT → JSON 가져오기
+  └─ 개념 / 퀴즈 / 복습 / 카드 / 모의고사 / 계획 / 현황
+        ↓
+Next.js App Router + Route Handler
+  ├─ loopback Host + 같은 Origin의 변경 요청
+  ├─ 자동 발급한 로컬 브라우저 세션
+  ├─ JSON 검증 / 불변 revision 저장 / 수정 충돌 검사
+  └─ 서버 출제·채점 / 개인 학습 기록
+        ↓
+Storage.transaction → 단일 프로세스 FileStorage (.local/study.json)
 ```
 
-- `src/lib/validation.ts`: Ajv 2020-12와 교차 참조 검증. 원문/정답은 서버에서만 읽고, 채점 전 출제 DTO에는 정답·해설·오답 피드백을 포함하지 않는다.
-- `src/lib/api.ts`: 로컬 Host 확인, 동일 Origin 변경 요청, 크기 제한 및 UTF-8 파싱, HttpOnly/SameSite=Strict 데모 세션, 관리자/학습자 라우트, 사용자별 기록 확인.
-- `src/lib/storage.ts`: 메모리 Promise 큐로 직렬화하고 원자적 파일 교체로 쓰는 어댑터. 다중 프로세스·서버리스는 지원하지 않으며 Supabase 단계에서 어댑터와 인증을 교체해야 한다.
-- `src/lib/learning.ts`: 서울 날짜 기준 1/3/7/14일 복습, 최근 10번 시도 기반 개념 지표, 공개 응시 DTO.
-- 게시 단위는 불변 revision. 과거 응시와 복습은 원래 revision을 참조한다. 비공개/공유 취소된 학습팩은 새 학습 및 결과 상세 접근에서 거부한다. 자신의 이전 성취 집계와 제목 이력은 유지한다.
-- 데모 계정 네 개는 공개 선택 가능하다. 실제 신원/초대/권한 경계로 주장하지 않는다. 학습자 세션의 관리자 API 거부와 사용자별 기록 분리를 자동 테스트하되, Supabase RLS 검증과 구분한다.
-- 모의고사는 서버 발급 마감 시각을 사용한다. 클라이언트 타이머는 자동 제출을 돕고, 서버 마감 + 전송 유예 5초 이후 요청은 답안 추가를 허용하지 않는다. 미응답은 오답으로 남긴다.
-- 실행/빌드는 외부 폰트/CDN/API 없이 가능하다. 로컬 한국어 시스템 폰트를 사용한다.
+## 코드 구성
 
-## 디자인 적용
+- `src/components/library.tsx`: 개인 문제은행, JSON/샘플/수동 프롬프트, 미리보기, 검수, 저장·내보내기, 브라우저 초안.
+- `src/components/pack-editor.tsx`: 개념/FAQ, 문항/정답/출처, 카드 입력. ID는 생성 시 부여하며 수정 중 유지한다.
+- `src/components/study-app.tsx`: 로컬 세션 초기화, 탐색, 홈, 설정과 이전 기록 선택.
+- `src/components/learning-views.tsx`, `quiz.tsx`: 기존 학습 루프와 답안 복원.
+- `src/lib/validation.ts`: Ajv 2020-12, ID/개념/보기/출처/공백/크기/500문항 검증.
+- `src/lib/api.ts`: 로컬 요청 경계, 세션, 콘텐츠 API, 서버 채점, 버전별 기록과 이전 이력 선택.
+- `src/lib/learning.ts`: 서울 날짜, 복습 간격 1/3/7/14일, 최근 10회 지표, 출제 DTO.
+- `src/lib/storage.ts`: Promise 큐 직렬화, 임시 파일 쓰기 후 원자적 교체. 손상된 파일을 덮어쓰지 않는다.
 
-[Taste Skill](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill/SKILL.md)의 타이포그래피·일관된 여백/색상·명확한 행동 문구·키보드 포커스·축소 모션 원칙을 학습 앱에 적용했다. 사용자 요청과 PRD에 따라 마케팅 사이트용 전면 히어로/셰이더/사진 템플릿 대신 실제 학습 화면을 구현하고, 데모 표기를 유지했다. 따뜻한 밝은 바탕, 짙은 글자, 절제된 녹색과 1px 경계선을 공통 토큰으로 사용한다. Astra의 자산이나 코드를 복제하지 않는다.
+## 세션과 요청 경계
+
+세션 쿠키는 HttpOnly/SameSite=Strict, 24시간이며 앱이 자동 생성/갱신한다. 세션 사용자 값 `local-owner`만 인정하고 예전 데모 역할 세션은 사용하지 않는다. 클라이언트의 임의 profileId로 계정을 선택할 수 없다. 실제 인터넷 인증은 아니므로 localhost/127.0.0.1/::1 외 Host를 거부한다. 변경 요청은 브라우저 Host 기준으로 정확히 같은 Origin만 허용한다. Next가 내부 URL을 바인드 호스트로 정규화할 수 있으므로 실제 Host를 사용하고 forwarded 헤더는 신뢰하지 않는다.
+
+독립 설치본의 모든 콘텐츠는 그 설치본 소유자의 문제은행이다. `library/packs/:id`에는 편집에 필요한 정답을 포함하지만 출제 응답은 정답·해설·오답 피드백을 제외한다. 저장 요청의 `userId`/`role`을 사용자 식별로 사용하지 않는다. 온라인 권한 보장이나 부정행위 방지 기능으로 주장하지 않는다.
+
+## API
+
+- `POST session {}`: 로컬 세션 준비. `GET bootstrap`: 학습 자료 요약과 현재 이력.
+- `GET library/sample`, `POST library/prompt`, `POST library/preview`: 자료 준비/검증.
+- `POST library/save {raw, packId?, baseRevisionId?}`: 검증 후 새 팩 또는 새 revision 저장. 즉시 학습에 적용한다.
+- `GET library/packs/:id`: 최신 작성본과 `baseRevisionId` 반환. JSON 내보내기는 내용만 내려받는다.
+- 기존 팩 저장 시 `baseRevisionId`가 최신 저장본과 다르면 409. 실패 시 기존 데이터에 변화가 없다.
+- `runs`, `runs/:id`, `study`, `flashcards`, `goals`, `reset`: 학습 기능. 초기화는 확인 문구를 요구하고 현재 기록만 지운다.
+- `POST history`: 이전 데모 이력이 있는 설치본에서 이어 쓸 기록 선택. 새 계정 생성이나 인증 기능이 아니다.
+- 이전 `admin/*` 게시/공유 API는 사용하지 않는다.
+
+## 데이터 호환성과 저장
+
+저장 파일 버전 1과 JSON 계약 1.0을 유지한다. `packs.publishedId`는 현재 학습 버전 포인터로 재사용하고 이전 `access`는 보존하되 개인 설치본에서 접근 제한으로 적용하지 않는다. 이전 비공개 팩은 마지막 revision을 사용한다. 기존 게시본과 나중의 미게시 수정본이 둘 다 있으면 학습은 기존 게시본을 유지하고, 편집기는 최신 수정본을 열어 검수 후 저장하도록 한다.
+
+기본 기록 ID는 기존 `learner-1`이다. `historyId`는 이어 쓸 이전 이력 ID를 선택하는 선택 필드다. `learner-2/3`의 기록은 덮어쓰거나 합치지 않으며 설정에서 선택할 수 있다. 선택하지 않은 기록의 상세 응시에는 현재 이력으로 접근하지 않는다. 모든 이력은 동일한 개인 설치본에 있는 보존 데이터이며 실제 사용자 권한 격리로 주장하지 않는다.
+
+새 저장은 이전 revision 객체를 수정하지 않는다. 과거 응시·복습은 당시 버전을 계속 참조한다. 목표는 학습팩 단위, 개념 진도/현재 성취도는 버전 단위다. 모의고사는 서버 마감 + 전송 유예 5초 이후에 추가 답안을 인정하지 않는다.
+
+작성 중 초안은 브라우저 localStorage의 `astra-personal-draft-v1`에 보관한다. 초안 수정 시 검수 상태를 해제한다. 브라우저 저장 공간 오류를 표시하고 JSON 다운로드로 보관할 수 있다. 학습팩 정식 저장 후 초안을 제거한다. 초안은 서버 백업에 포함되지 않는다.
+
+파일 저장은 한 Next.js 프로세스에서만 지원한다. 서버리스·다중 프로세스·인터넷 공유는 인증과 DB 어댑터 구현 이후 검증한다. 앱은 외부 폰트/CDN/AI API 없이 실행되며 GPU는 필요 없다.
+
+## 디자인
+
+[Taste Skill](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill/SKILL.md)을 타이포그래피·정렬·색상·간격·포커스·모션의 참고로 사용한다. 사용자 요구에 맞는 실제 학습 도구를 직접 구현하며 마케팅용 전면 히어로나 사진 템플릿을 복제하지 않는다. 입력은 섹션별로 나누고 문항 하나씩 편집해 큰 JSON도 다룰 수 있도록 한다.

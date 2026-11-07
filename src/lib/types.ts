@@ -33,13 +33,8 @@ export type StudyPack = {
   questions: Question[];
   flashcards: Flashcard[];
 };
-export type Profile = { id: string; name: string; role: "admin" | "learner" };
-export const profiles: Profile[] = [
-  { id: "admin", name: "관리자", role: "admin" },
-  { id: "learner-1", name: "학습자 1", role: "learner" },
-  { id: "learner-2", name: "학습자 2", role: "learner" },
-  { id: "learner-3", name: "학습자 3", role: "learner" },
-];
+export type Profile = { id: string; name: string };
+export type LegacyHistory = { id: string; name: string; records: number };
 export type Revision = {
   id: string;
   version: number;
@@ -91,6 +86,7 @@ export type Goal = {
 };
 export type State = {
   version: 1;
+  historyId?: string; // Keeps pre-personal-mode records separate; defaults to learner-1.
   packs: Pack[];
   runs: Run[];
   reviews: Review[];
@@ -114,11 +110,9 @@ export type PublicPack = {
   studied: string[];
   goal?: Goal;
 };
-export type AdminPack = {
+export type LibraryPack = {
   id: string;
   title: string;
-  publishedId: string | null;
-  access: string[];
   revisions: {
     id: string;
     version: number;
@@ -168,9 +162,9 @@ export type ReviewView = Review & {
 };
 export type Bootstrap = {
   user: Profile | null;
-  profiles: Profile[];
+  legacyHistories: LegacyHistory[];
   packs: PublicPack[];
-  adminPacks: AdminPack[];
+  libraryPacks: LibraryPack[];
   reviews: ReviewView[];
   summary: Summary;
   today: string;

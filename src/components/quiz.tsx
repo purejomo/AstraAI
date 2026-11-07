@@ -150,7 +150,7 @@ export default function Quiz({
                 ? g.sources
                     .map((s) => `${s.file} · ${s.page ?? "미확인"}쪽`)
                     .join(", ")
-                : "출처 미확인 · 관리자 검토가 필요한 AI 생성 연습문제"}
+                : "출처 미확인 · 원본 자료와 정답을 확인해 주세요"}
             </p>
           </article>
         ))}

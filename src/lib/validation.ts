@@ -41,6 +41,17 @@ export function parsePack(raw: string): StudyPack {
         errors.push(`/${key}/${i}/id: 비어 있거나 중복된 ID입니다.`);
       ids.add(item.id);
     }
+  for (const key of ["concepts", "questions", "flashcards"] as const)
+    for (const [i, item] of data[key].entries())
+      for (const [field, value] of Object.entries(item))
+        if (typeof value === "string" && !value.trim())
+          errors.push(`/${key}/${i}/${field}: 공백만 입력할 수 없습니다.`);
+  for (const [i, concept] of data.concepts.entries()) {
+    if (concept.key_points.some((point) => !point.trim()))
+      errors.push(`/concepts/${i}/key_points: 핵심 내용을 입력하세요.`);
+    if (concept.faqs.some((f) => !f.question.trim() || !f.answer.trim()))
+      errors.push(`/concepts/${i}/faqs: 질문과 답변을 입력하세요.`);
+  }
   const concepts = new Set(data.concepts.map((c) => c.id));
   for (const key of ["questions", "flashcards"] as const)
     for (const [i, item] of data[key].entries())

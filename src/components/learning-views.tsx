@@ -297,7 +297,7 @@ export function PackDetail({
             <div className="empty panel">
               <Layers />
               <h2>등록된 플래시카드가 없습니다</h2>
-              <p>관리자가 다음 개정본에 카드를 추가할 수 있습니다.</p>
+              <p>나의 문제은행에서 이 학습팩을 수정해 카드를 추가하세요.</p>
             </div>
           ))}
       </div>
@@ -509,7 +509,7 @@ export function Plans({
       </div>
       {!data.packs.length && (
         <div className="empty panel">
-          <h2>학습팩이 게시되면 목표를 세울 수 있어요</h2>
+          <h2>학습팩을 저장하면 목표를 세울 수 있어요</h2>
         </div>
       )}
       {data.packs.map((pack) => {
@@ -633,7 +633,7 @@ export function Stats({
       <section className="panel">
         <h2>개념별 이해도</h2>
         {!s.concepts.length && (
-          <p className="muted">게시된 학습팩의 개념이 여기에 표시됩니다.</p>
+          <p className="muted">저장한 학습팩의 개념이 여기에 표시됩니다.</p>
         )}
         {s.concepts.map((c) => (
           <div className="concept-stat" key={`${c.packId}-${c.conceptId}`}>

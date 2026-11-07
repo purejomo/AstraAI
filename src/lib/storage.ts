@@ -14,7 +14,7 @@ export const emptyState = (): State => ({
 export interface Storage {
   transaction<T>(fn: (state: State) => T | Promise<T>): Promise<T>;
 }
-/** Single-process local demo adapter. All updates are serialized and atomically replaced. */
+/** Single-process personal workspace adapter. All updates are serialized and atomically replaced. */
 export class FileStorage implements Storage {
   private queue: Promise<unknown> = Promise.resolve();
   constructor(private directory: string) {}

@@ -10,7 +10,6 @@ import {
   CircleHelp,
   LayoutDashboard,
   Library,
-  LogOut,
   Menu,
   Plus,
   RotateCcw,
@@ -20,13 +19,14 @@ import {
 } from "lucide-react";
 import type { Bootstrap, PublicPack, RunView } from "@/lib/types";
 import { api } from "./api-client";
-import Admin from "./admin";
+import LibraryView from "./library";
 import Quiz from "./quiz";
 import { PackDetail, Plans, Reviews, Stats } from "./learning-views";
 type View =
-  "home" | "packs" | "review" | "goals" | "stats" | "settings" | "admin";
+  "home" | "packs" | "review" | "goals" | "stats" | "settings" | "library";
 const nav = [
   { id: "home", label: "오늘의 학습", icon: LayoutDashboard },
+  { id: "library", label: "나의 문제은행", icon: Plus },
   { id: "packs", label: "나의 학습팩", icon: Library },
   { id: "review", label: "오답과 복습", icon: RotateCcw },
   { id: "goals", label: "학습 계획", icon: CalendarDays },
@@ -67,6 +67,14 @@ function PackCard({ pack, open }: { pack: PublicPack; open: () => void }) {
       </div>
     </button>
   );
+}
+async function loadWorkspace() {
+  let data = await api<Bootstrap>("bootstrap");
+  if (!data.user) {
+    await api("session", {});
+    data = await api<Bootstrap>("bootstrap");
+  }
+  return data;
 }
 export default function StudyApp() {
   const [data, setData] = useState<Bootstrap | null>(null);
@@ -112,39 +120,18 @@ export default function StudyApp() {
     };
   }, [menu]);
   const refresh = useCallback(async () => {
-    const next = await api<Bootstrap>("bootstrap");
+    const next = await loadWorkspace();
     setData(next);
     return next;
   }, []);
   useEffect(() => {
-    void api<Bootstrap>("bootstrap")
+    void loadWorkspace()
       .then((d) => {
         setData(d);
-        if (d.user) {
-          setView(d.user.role === "admin" ? "admin" : "home");
-          setSavedRun(sessionStorage.getItem(`active-${d.user.id}`));
-        }
+        if (d.user) setSavedRun(sessionStorage.getItem(`active-${d.user.id}`));
       })
       .catch((e) => setError(e.message));
-  }, [refresh]);
-  async function switchUser(id: string) {
-    setBusy(true);
-    setError("");
-    try {
-      await api("session", { profileId: id });
-      setRun(null);
-      setSelected(null);
-      setNotice("");
-      const next = await refresh();
-      setView(next.user?.role === "admin" ? "admin" : "home");
-      setSavedRun(sessionStorage.getItem(`active-${id}`));
-      setMenu(false);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  }, []);
   async function act(path: string, body: unknown) {
     if (busy) return false;
     setBusy(true);
@@ -214,83 +201,7 @@ export default function StudyApp() {
         )}
       </main>
     );
-  if (!data.user)
-    return (
-      <main className="login">
-        <div className="login-story">
-          <div className="brand">
-            <span className="brand-mark">
-              <Sprout size={23} />
-            </span>
-            AstraAI
-          </div>
-          <p className="eyebrow">작은 공부, 차곡차곡</p>
-          <h1>
-            배운 것을,
-            <br />
-            나의 것으로.
-          </h1>
-          <p className="lead">
-            개념을 읽고, 문제를 풀고, 다시 복습하는
-            <br />
-            나만의 조용한 학습실.
-          </p>
-          <div className="login-notes">
-            <span>01 개념 이해</span>
-            <span>02 문제 풀이</span>
-            <span>03 반복 학습</span>
-          </div>
-          <div className="paper-art" aria-hidden="true">
-            <BookOpen size={100} strokeWidth={0.7} />
-            <span>오늘의 한 페이지</span>
-            <i />
-            <i />
-            <i />
-          </div>
-        </div>
-        <div className="login-form">
-          <span className="tag">로컬 개발 데모</span>
-          <h2>학습실 입장</h2>
-          <p>데모 계정을 선택해 흐름을 체험하세요.</p>
-          <div className="notice">
-            개발/데모 전용 계정 전환입니다.
-            <br />
-            실제 로그인이나 초대 인증이 아닙니다.
-          </div>
-          {error && (
-            <p role="alert" className="notice error">
-              {error}
-            </p>
-          )}
-          {data.profiles.map((p) => (
-            <button
-              className="profile-option"
-              disabled={busy}
-              key={p.id}
-              onClick={() => void switchUser(p.id)}
-            >
-              <span className="avatar">
-                {p.role === "admin" ? "관" : p.name.slice(-1)}
-              </span>
-              <span>
-                <strong>{p.name}</strong>
-                <small>
-                  {p.role === "admin"
-                    ? "프롬프트 · 문제은행 · 게시 관리"
-                    : "개념 · 퀴즈 · 나의 학습 기록"}
-                </small>
-              </span>
-              <ArrowRight size={18} />
-            </button>
-          ))}
-          <p className="muted login-footnote">
-            모든 학습 내용과 기록은 이 개발 환경에 저장됩니다.
-          </p>
-        </div>
-      </main>
-    );
-  const user = data.user;
-  const isAdmin = user.role === "admin";
+  const user = data.user!;
   const pack = data.packs.find((p) => p.id === selected);
   const s = data.summary;
   const date = new Intl.DateTimeFormat("ko-KR", {
@@ -320,30 +231,20 @@ export default function StudyApp() {
         </div>
         <p className="sidebar-caption">나를 위한 학습 공간</p>
         <nav aria-label="주 메뉴">
-          {isAdmin ? (
+          {nav.map((n) => (
             <button
-              className={view === "admin" ? "active" : ""}
-              onClick={() => navigate("admin")}
+              key={n.id}
+              className={view === n.id ? "active" : ""}
+              aria-current={view === n.id ? "page" : undefined}
+              onClick={() => navigate(n.id)}
             >
-              <Plus size={19} />
-              학습팩 관리
+              <n.icon size={19} />
+              {n.label}
+              {n.id === "review" && s.due > 0 && (
+                <span className="nav-count">{s.due}</span>
+              )}
             </button>
-          ) : (
-            nav.map((n) => (
-              <button
-                key={n.id}
-                className={view === n.id ? "active" : ""}
-                aria-current={view === n.id ? "page" : undefined}
-                onClick={() => navigate(n.id)}
-              >
-                <n.icon size={19} />
-                {n.label}
-                {n.id === "review" && s.due > 0 && (
-                  <span className="nav-count">{s.due}</span>
-                )}
-              </button>
-            ))
-          )}
+          ))}
         </nav>
         <div className="sidebar-bottom">
           <div className="quiet-note">
@@ -363,19 +264,12 @@ export default function StudyApp() {
           </button>
           <div className="profile-bar">
             <span className="avatar">
-              {isAdmin ? "관" : user.name.slice(-1)}
+              <BookOpen size={20} />
             </span>
             <div>
-              <strong>{user.name}</strong>
-              <small>데모 계정</small>
+              <strong>나의 학습실</strong>
+              <small>이 PC에 저장</small>
             </div>
-            <button
-              className="icon-button"
-              aria-label="로그아웃"
-              onClick={() => void act("logout", {})}
-            >
-              <LogOut size={18} />
-            </button>
           </div>
         </div>
       </aside>
@@ -399,36 +293,14 @@ export default function StudyApp() {
             <span className="breadcrumb">
               나의 학습실
               <ChevronRight size={14} />
-              <strong>
-                {isAdmin
-                  ? "관리자"
-                  : nav.find((n) => n.id === view)?.label || "설정"}
-              </strong>
+              <strong>{nav.find((n) => n.id === view)?.label || "설정"}</strong>
             </span>
           </div>
           <span className="demo-badge">
             <span />
-            로컬 데모
+            개인 학습실
           </span>
         </header>
-        <div className="demo-strip">
-          <span>개발/데모 전용 계정 전환</span>
-          <label className="sr-only" htmlFor="profile-select">
-            데모 계정
-          </label>
-          <select
-            id="profile-select"
-            value={user.id}
-            disabled={busy}
-            onChange={(e) => void switchUser(e.target.value)}
-          >
-            {data.profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
         <main id="main" className="main-content" aria-busy={busy}>
           {error && (
             <div className="notice error" role="alert">
@@ -450,9 +322,10 @@ export default function StudyApp() {
                 void refresh();
               }}
             />
-          ) : isAdmin && view !== "settings" ? (
-            <Admin
-              packs={data.adminPacks}
+          ) : view === "library" ? (
+            <LibraryView
+              open={open}
+              packs={data.libraryPacks}
               refresh={async () => {
                 await refresh();
               }}
@@ -467,54 +340,90 @@ export default function StudyApp() {
                 <CircleHelp />
               </div>
               <section className="panel">
-                <h2>이 환경의 저장과 계정</h2>
+                <h2>내 문제은행과 기록 보관</h2>
                 <p>
-                  개발용 데모 사용자 3명과 관리자 1명을 전환할 수 있습니다. 데모
-                  계정은 실제 신원을 확인하지 않습니다. 공개 서비스용 인증은
-                  아직 연결하지 않았습니다.
+                  학습팩을 직접 만들고 수정한 뒤 같은 학습실에서 공부할 수
+                  있습니다. 다른 사람이 내려받은 설치본과는 자료나 기록이
+                  공유되지 않습니다.
                 </p>
                 <p>
-                  학습팩과 기록은 서버의 로컬 파일에 저장됩니다. 새로고침·서버
-                  재시작 후 유지되지만, 파일이나 개발 환경을 지우면 복구되지
-                  않습니다.
+                  학습팩과 기록은 설치 폴더의 .local/study.json에 저장됩니다.
+                  앱을 종료한 뒤 .local 폴더를 복사해 백업하세요. 작성 중인
+                  내용은 이 브라우저에만 임시 보관되며, 정식 저장 전에는 백업에
+                  포함되지 않습니다.
+                </p>
+                <p>
+                  이 앱은 본인 PC에서 사용하는 개인 학습실입니다. 인터넷용
+                  로그인은 제공하지 않습니다.
                 </p>
                 <p>
                   앱은 ChatGPT에 자료를 전송하거나 AI API를 호출하지 않습니다.
                   학습 지표와 복습 일정은 기록에 따른 규칙으로 계산합니다.
                 </p>
               </section>
-              {!isAdmin && (
+              {data.legacyHistories.length > 0 && (
                 <section className="panel">
-                  <h2>내 데모 학습 기록 삭제</h2>
+                  <h2>이전 버전 기록 이어 쓰기</h2>
                   <p>
-                    현재 계정의 풀이·복습·계획·개념 학습 기록을 삭제합니다.
-                    학습팩과 다른 계정의 기록은 유지됩니다.
+                    기존 학습자 1 기록을 기본으로 사용합니다. 다른 기록도 그대로
+                    보존되어 있으며, 선택한 기록만 학습 현황에 표시됩니다. 계정
+                    로그인 기능은 아닙니다.
                   </p>
                   <label>
-                    확인 문구 ‘내 기록 삭제’ 입력
-                    <input
-                      value={confirmation}
-                      onChange={(e) => setConfirmation(e.target.value)}
-                    />
+                    이어 쓸 기록
+                    <select
+                      value={user.id}
+                      disabled={busy}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        void act("history", { historyId: id }).then((ok) => {
+                          if (ok) {
+                            setRun(null);
+                            setSelected(null);
+                            setSavedRun(sessionStorage.getItem(`active-${id}`));
+                          }
+                        });
+                      }}
+                    >
+                      {data.legacyHistories.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {h.name} · {h.records}개 기록
+                        </option>
+                      ))}
+                    </select>
                   </label>
-                  <button
-                    className="button danger"
-                    disabled={confirmation !== "내 기록 삭제" || busy}
-                    onClick={() =>
-                      void act("reset", {
-                        confirmation: "DELETE_MY_DEMO_RECORDS",
-                      }).then((ok) => {
-                        if (!ok) return;
-                        setConfirmation("");
-                        sessionStorage.removeItem(`active-${user.id}`);
-                        setSavedRun(null);
-                      })
-                    }
-                  >
-                    내 데모 기록 삭제
-                  </button>
                 </section>
               )}
+              <section className="panel">
+                <h2>내 학습 기록 삭제</h2>
+                <p>
+                  현재 사용하는 풀이·복습·계획·개념 학습 기록을 삭제합니다.
+                  학습팩과 선택하지 않은 이전 버전의 기록은 유지됩니다.
+                </p>
+                <label>
+                  확인 문구 ‘내 기록 삭제’ 입력
+                  <input
+                    value={confirmation}
+                    onChange={(e) => setConfirmation(e.target.value)}
+                  />
+                </label>
+                <button
+                  className="button danger"
+                  disabled={confirmation !== "내 기록 삭제" || busy}
+                  onClick={() =>
+                    void act("reset", {
+                      confirmation: "DELETE_MY_RECORDS",
+                    }).then((ok) => {
+                      if (!ok) return;
+                      setConfirmation("");
+                      sessionStorage.removeItem(`active-${user.id}`);
+                      setSavedRun(null);
+                    })
+                  }
+                >
+                  내 기록 삭제
+                </button>
+              </section>
             </>
           ) : pack ? (
             <PackDetail
@@ -538,7 +447,7 @@ export default function StudyApp() {
                     <div>
                       <p className="eyebrow">{date}</p>
                       <h1>오늘의 학습</h1>
-                      <p>{user.name}님, 오늘도 나만의 속도로 쌓아가세요.</p>
+                      <p>오늘도 나만의 속도로 쌓아가세요.</p>
                     </div>
                     <span className="heading-icon">
                       <Sprout size={30} />
@@ -554,14 +463,19 @@ export default function StudyApp() {
                       <p>
                         {data.packs.length
                           ? `${data.packs.length}개 학습팩에서 오늘의 공부를 시작해 보세요.`
-                          : "관리자가 학습팩을 게시하면 이곳에서 시작할 수 있어요."}
+                          : "내가 만든 문제로 첫 공부를 시작해 보세요."}
                       </p>
                       <button
                         className="button primary"
-                        disabled={!data.packs.length}
-                        onClick={() => data.packs[0] && open(data.packs[0].id)}
+                        onClick={() =>
+                          data.packs[0]
+                            ? open(data.packs[0].id)
+                            : navigate("library")
+                        }
                       >
-                        학습 시작하기
+                        {data.packs.length
+                          ? "학습 시작하기"
+                          : "첫 학습팩 만들기"}
                         <ArrowRight size={17} />
                       </button>
                     </div>
@@ -655,7 +569,7 @@ export default function StudyApp() {
               ) : (
                 <div className="page-heading">
                   <div>
-                    <p className="eyebrow">함께 나누는 학습 자료</p>
+                    <p className="eyebrow">직접 쌓아가는 학습 자료</p>
                     <h1>나의 학습팩</h1>
                     <p>개념부터 퀴즈, 플래시카드와 모의고사까지.</p>
                   </div>
@@ -663,7 +577,7 @@ export default function StudyApp() {
                 </div>
               )}
               <div className="section-heading">
-                <h2>{view === "home" ? "이어서 학습하기" : "게시된 학습팩"}</h2>
+                <h2>{view === "home" ? "이어서 학습하기" : "저장한 학습팩"}</h2>
                 {view === "home" && (
                   <button
                     className="text-button"
@@ -683,12 +597,18 @@ export default function StudyApp() {
               ) : (
                 <div className="empty panel">
                   <Library size={36} />
-                  <h2>아직 게시된 학습팩이 없어요</h2>
+                  <h2>아직 저장한 학습팩이 없어요</h2>
                   <p>
-                    관리자 계정에서 JSON을 검수하고 게시해 주세요.
-                    <br />
-                    게시된 자료만 학습자에게 나타납니다.
+                    나의 문제은행에서 직접 문제를 만들거나 JSON 파일을
+                    가져오세요.
                   </p>
+                  <button
+                    className="button secondary"
+                    onClick={() => navigate("library")}
+                  >
+                    나의 문제은행 열기
+                    <ArrowRight size={16} />
+                  </button>
                 </div>
               )}
               {view === "home" && (
@@ -715,7 +635,7 @@ export default function StudyApp() {
           )}
           <footer className="app-footer">
             <span>AstraAI · 나의 학습실</span>
-            <span>AI 생성 연습문제 · 정답과 출처는 관리자 검수 필요</span>
+            <span>내가 만드는 문제은행 · 정답과 출처를 확인해 주세요</span>
           </footer>
         </main>
       </div>

@@ -11,7 +11,7 @@
 5. [구현 계획 및 검증 이력](IMPLEMENTATION_PLAN.md)
 6. [Cloud 단독 개발 지침](CODEX_CLOUD_START.md), [온라인 전환 계획](ONLINE_ROADMAP.md)
 
-기존 설계 문서의 경로는 `docs/development/` 아래로 이동했습니다. 현재 로컬 데모의 인증과 저장 한계를 운영 기능이 완성된 것으로 표현하지 않습니다.
+기존 설계 문서의 경로는 `docs/development/` 아래로 이동했습니다. 현재 개인 PC용 앱의 인증과 저장 한계를 운영 기능이 완성된 것으로 표현하지 않습니다.
 
 ## 개발 서버
 
@@ -28,7 +28,7 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-운영자가 사용하는 설치 흐름은 `npm run build` → `npm start`입니다. 코드 수정 중에는 HMR을 제공하는 `npm run dev`를 사용합니다. 둘 다 기본적으로 로컬 인터페이스에 바인딩합니다.
+사용자가 따르는 설치 흐름은 `npm run build` → `npm start`입니다. 코드 수정 중에는 HMR을 제공하는 `npm run dev`를 사용합니다. 둘 다 기본적으로 로컬 인터페이스에 바인딩합니다.
 
 ## Codex Cloud
 
@@ -83,14 +83,14 @@ E2E는 먼저 빌드한 앱을 포트 3100에서 시작하고 실행별 임시 �
 ## 데이터와 실행 구조
 
 - `src/lib/validation.ts`: Ajv 스키마와 교차 참조 검사
-- `src/lib/api.ts`: 데모 세션, 역할 확인, 공개 DTO, 출제·채점, 사용자별 기록
+- `src/lib/api.ts`: 로컬 세션, 개인 문제은행, 수정 충돌 검사, 출제·채점, 이전 이력 보존
 - `src/lib/learning.ts`: 서울 날짜 기준 복습 간격과 최근 10회 지표
 - `src/lib/storage.ts`: `Storage.transaction` 인터페이스와 로컬 파일 어댑터
-- `src/components/`: 관리자·학습자 화면
+- `src/components/`: 개인 문제은행 편집기와 학습 화면
 
 현재 파일 저장 어댑터는 **하나의 Next.js 프로세스용**입니다. Promise 큐로 변경을 직렬화하고 임시 파일을 원자적으로 교체합니다. 서버리스·다중 프로세스·공유 파일 시스템에는 사용할 수 없습니다. 손상된 기존 파일은 덮어쓰지 않고 오류를 반환합니다.
 
-세션은 HttpOnly/SameSite=Strict 쿠키를 사용하지만 공개 선택 가능한 데모 프로필을 실제 신원 확인으로 취급하면 안 됩니다. 출제 DTO는 정답·해설을 제외하고, 서버가 제출을 채점합니다. 게시 개정본을 수정하지 않고 새 revision으로 보관하여 과거 정답을 유지합니다.
+세션은 자동 발급하는 HttpOnly/SameSite=Strict 쿠키이며 인터넷 신원 확인이 아닙니다. 로컬 Host와 동일 Origin 검사를 유지합니다. 출제 DTO는 정답·해설을 제외하고, 서버가 제출을 채점합니다. 기존 저장본을 수정하지 않고 새 revision으로 보관하여 과거 정답을 유지합니다.
 
 ## 문서 유지
 

@@ -6,14 +6,13 @@ import schema from "../../schemas/study-pack.schema.json";
 import { AppError, integer, MAX_BYTES, parsePack, text } from "./validation";
 import { day, nextReview, publicRun, summary } from "./learning";
 import {
-  profiles,
   type Pack,
   type Profile,
   type State,
   type Review,
   type Run,
 } from "./types";
-import { storage, type Storage } from "./storage";
+import { storage, emptyState, type Storage } from "./storage";
 const json = (
   data: unknown,
   status = 200,
@@ -24,22 +23,35 @@ const json = (
     headers: { "Cache-Control": "no-store", ...headers },
   });
 function requireUser(user: Profile | undefined): Profile {
-  if (!user) throw new AppError("데모 계정을 선택해 주세요.", 401);
+  if (!user) throw new AppError("학습실을 다시 열어 주세요.", 401);
   return user;
 }
-function admin(user: Profile) {
-  if (user.role !== "admin")
-    throw new AppError("관리자만 사용할 수 있습니다.", 403);
-}
-function learner(user: Profile) {
-  if (user.role !== "learner")
-    throw new AppError("학습자 계정에서 시작해 주세요.", 403);
-}
-function accessible(state: State, id: unknown, user: Profile): Pack {
+function accessible(state: State, id: unknown): Pack {
   const p = state.packs.find((p) => p.id === id);
-  if (!p || !p.publishedId || !p.access.includes(user.id))
-    throw new AppError("이 학습팩에 접근할 수 없습니다.", 404);
+  if (!p || !p.revisions.length)
+    throw new AppError("학습팩을 찾지 못했습니다.", 404);
   return p;
+}
+function activeId(pack: Pack) {
+  return pack.publishedId || pack.revisions.at(-1)!.id;
+}
+function legacyHistories(state: State) {
+  const records = [
+    ...state.runs,
+    ...state.reviews,
+    ...state.goals,
+    ...state.studied,
+  ];
+  if (
+    !state.historyId &&
+    !records.some((r) => ["learner-2", "learner-3"].includes(r.userId))
+  )
+    return [];
+  return ["learner-1", "learner-2", "learner-3"].map((id, i) => ({
+    id,
+    name: `이전 학습자 ${i + 1}`,
+    records: records.filter((r) => r.userId === id).length,
+  }));
 }
 function recordReview(
   state: State,
@@ -95,12 +107,12 @@ export async function handle(
   try {
     const url = new URL(req.url);
     // Next can normalize req.url to its bind hostname. Host is the browser-facing
-    // authority; never use forwarded headers for this local-only demo.
+    // authority; never use forwarded headers for this local-only workspace.
     const authority = new URL(
       `${url.protocol}//${req.headers.get("host") || url.host}`,
     );
     if (!["localhost", "127.0.0.1", "[::1]"].includes(authority.hostname))
-      throw new AppError("이 데모는 로컬 개발 환경에서만 실행됩니다.", 403);
+      throw new AppError("이 학습실은 본인 PC에서만 사용할 수 있습니다.", 403);
     if (req.method !== "GET" && req.headers.get("origin") !== authority.origin)
       throw new AppError("요청 출처를 확인할 수 없습니다.", 403);
     const route = url.pathname.replace(/^\/api\//, "");
@@ -115,20 +127,23 @@ export async function handle(
       state.sessions = state.sessions.filter(
         (s) => s.expiresAt > now.getTime(),
       );
-      const user = profiles.find(
-        (p) => p.id === state.sessions.find((s) => s.token === token)?.userId,
-      );
+      // This cookie is a local browser session, not an Internet authentication boundary.
+      const user = state.sessions.some(
+        (s) => s.token === token && s.userId === "local-owner",
+      )
+        ? { id: state.historyId || "learner-1", name: "나의 학습실" }
+        : undefined;
       if (req.method === "POST" && route === "session") {
-        const profile = profiles.find((p) => p.id === input.profileId);
-        if (!profile) throw new AppError("알 수 없는 데모 계정입니다.");
+        if (Object.keys(input).length)
+          throw new AppError("계정 선택은 더 이상 사용하지 않습니다.");
         const sessionToken = randomBytes(32).toString("hex");
         state.sessions = state.sessions.filter((s) => s.token !== token);
         state.sessions.push({
           token: sessionToken,
-          userId: profile.id,
+          userId: "local-owner",
           expiresAt: now.getTime() + 86400000,
         });
-        return json({ user: profile }, 200, {
+        return json({ ok: true }, 200, {
           "Set-Cookie": `astra_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400`,
         });
       }
@@ -140,42 +155,38 @@ export async function handle(
         });
       }
       if (req.method === "GET" && route === "bootstrap") {
-        const packs =
-          user?.role === "learner"
-            ? state.packs
-                .filter((p) => p.publishedId && p.access.includes(user.id))
-                .map((p) => {
-                  const r = p.revisions.find((r) => r.id === p.publishedId)!;
-                  return {
-                    id: p.id,
-                    revisionId: r.id,
-                    version: r.version,
-                    title: r.data.title,
-                    description: r.data.description,
-                    concepts: r.data.concepts,
-                    questionCount: r.data.questions.length,
-                    flashcards: r.data.flashcards,
-                    studied: state.studied
-                      .filter(
-                        (s) => s.userId === user.id && s.revisionId === r.id,
-                      )
-                      .map((s) => s.conceptId),
-                    goal: state.goals.find(
-                      (g) => g.userId === user.id && g.packId === p.id,
-                    ),
-                  };
-                })
-            : [];
+        const packs = user
+          ? state.packs
+              .filter((p) => p.revisions.length > 0)
+              .map((p) => {
+                const r = p.revisions.find((r) => r.id === activeId(p))!;
+                return {
+                  id: p.id,
+                  revisionId: r.id,
+                  version: r.version,
+                  title: r.data.title,
+                  description: r.data.description,
+                  concepts: r.data.concepts,
+                  questionCount: r.data.questions.length,
+                  flashcards: r.data.flashcards,
+                  studied: state.studied
+                    .filter(
+                      (s) => s.userId === user.id && s.revisionId === r.id,
+                    )
+                    .map((s) => s.conceptId),
+                  goal: state.goals.find(
+                    (g) => g.userId === user.id && g.packId === p.id,
+                  ),
+                };
+              })
+          : [];
         const reviews = user
           ? state.reviews
               .filter(
                 (r) =>
                   r.userId === user.id &&
                   state.packs.some(
-                    (p) =>
-                      p.id === r.packId &&
-                      p.publishedId &&
-                      p.access.includes(user.id),
+                    (p) => p.id === r.packId && p.revisions.length > 0,
                   ),
               )
               .map((r) => {
@@ -200,34 +211,45 @@ export async function handle(
           : [];
         return json({
           user: user || null,
-          profiles,
           packs,
+          legacyHistories: user ? legacyHistories(state) : [],
           reviews,
           today: day(now),
-          summary: summary(state, user?.id || "", now),
-          adminPacks:
-            user?.role === "admin"
-              ? state.packs.map((p) => ({
-                  id: p.id,
-                  title: p.revisions.at(-1)!.data.title,
-                  publishedId: p.publishedId,
-                  access: p.access,
-                  revisions: p.revisions.map((r) => ({
-                    id: r.id,
-                    version: r.version,
-                    title: r.data.title,
-                    questionCount: r.data.questions.length,
-                  })),
-                }))
-              : [],
+          summary: summary(user ? state : emptyState(), user?.id || "", now),
+          libraryPacks: user
+            ? state.packs.map((p) => ({
+                id: p.id,
+                title: p.revisions.at(-1)!.data.title,
+                revisions: p.revisions.map((r) => ({
+                  id: r.id,
+                  version: r.version,
+                  title: r.data.title,
+                  questionCount: r.data.questions.length,
+                })),
+              }))
+            : [],
         });
       }
       const actor = requireUser(user);
-      if (route.startsWith("admin/")) {
-        admin(actor);
-        if (req.method === "GET" && route === "admin/sample")
+      if (req.method === "POST" && route === "history") {
+        if (!legacyHistories(state).some((h) => h.id === input.historyId))
+          throw new AppError("이어 쓸 이전 기록을 찾지 못했습니다.");
+        state.historyId = input.historyId as string;
+        return json({ ok: true });
+      }
+      if (req.method === "GET" && route.startsWith("library/packs/")) {
+        const pack = accessible(state, route.split("/")[2]);
+        const revision = pack.revisions.at(-1)!;
+        return json({
+          packId: pack.id,
+          baseRevisionId: revision.id,
+          data: revision.data,
+        });
+      }
+      if (route.startsWith("library/")) {
+        if (req.method === "GET" && route === "library/sample")
           return json(sample);
-        if (req.method === "POST" && route === "admin/prompt") {
+        if (req.method === "POST" && route === "library/prompt") {
           const title = text(input.title, "제목", 150);
           const level = text(input.level, "학습 목표", 500);
           const count = integer(input.count, 1, 500);
@@ -248,22 +270,25 @@ export async function handle(
         }
         if (
           req.method === "POST" &&
-          (route === "admin/preview" || route === "admin/import")
+          (route === "library/preview" || route === "library/save")
         ) {
           if (typeof input.raw !== "string")
             throw new AppError("JSON 파일을 선택하거나 내용을 붙여 넣으세요.");
           const data = parsePack(input.raw);
-          if (route === "admin/preview") return json({ data });
+          if (route === "library/preview") return json({ data });
           let pack = state.packs.find((p) => p.id === input.packId);
           if (input.packId && !pack)
             throw new AppError("개정할 학습팩을 찾지 못했습니다.", 404);
+          if (pack && input.baseRevisionId !== pack.revisions.at(-1)?.id)
+            throw new AppError(
+              "다른 화면에서 수정한 내용이 있습니다. 작성 중인 JSON을 내려받은 뒤 최신 학습팩을 다시 열어 주세요.",
+              409,
+            );
           if (!pack) {
             pack = {
               id: randomUUID(),
               publishedId: null,
-              access: profiles
-                .filter((p) => p.role === "learner")
-                .map((p) => p.id),
+              access: [], // Retained in storage for compatibility with older installations.
               revisions: [],
             };
             state.packs.push(pack);
@@ -275,35 +300,12 @@ export async function handle(
             data,
           };
           pack.revisions.push(revision);
+          pack.publishedId = revision.id;
           return json({ packId: pack.id, revisionId: revision.id }, 201);
         }
-        if (req.method === "POST" && route === "admin/publish") {
-          const pack = state.packs.find((p) => p.id === input.packId);
-          if (!pack) throw new AppError("학습팩을 찾지 못했습니다.", 404);
-          if (input.revisionId === null) {
-            pack.publishedId = null;
-            return json({ ok: true });
-          }
-          if (!pack.revisions.some((r) => r.id === input.revisionId))
-            throw new AppError("개정본을 찾지 못했습니다.");
-          if (
-            !Array.isArray(input.access) ||
-            input.access.length < 1 ||
-            input.access.length > 3 ||
-            new Set(input.access).size !== input.access.length ||
-            !input.access.every((id) =>
-              profiles.some((p) => p.id === id && p.role === "learner"),
-            )
-          )
-            throw new AppError("공유할 학습자 1~3명을 선택하세요.");
-          pack.publishedId = input.revisionId as string;
-          pack.access = input.access as string[];
-          return json({ ok: true });
-        }
       }
-      learner(actor);
       if (req.method === "POST" && route === "runs") {
-        const pack = accessible(state, input.packId, actor);
+        const pack = accessible(state, input.packId);
         const mode = input.mode;
         if (!["quiz", "review", "exam"].includes(String(mode)))
           throw new AppError("학습 모드가 잘못되었습니다.");
@@ -321,7 +323,7 @@ export async function handle(
         if (mode === "review" && !review)
           throw new AppError("복습할 문항을 찾지 못했습니다.", 404);
         const revision = pack.revisions.find(
-          (r) => r.id === (review?.revisionId || pack.publishedId),
+          (r) => r.id === (review?.revisionId || activeId(pack)),
         )!;
         let questions = revision.data.questions.filter((q) =>
           review
@@ -361,7 +363,7 @@ export async function handle(
           (r) => r.id === route.split("/")[1] && r.userId === actor.id,
         );
         if (!run) throw new AppError("학습 기록을 찾지 못했습니다.", 404);
-        accessible(state, run.packId, actor);
+        accessible(state, run.packId);
         if (req.method === "GET") return json(publicRun(state, run));
         if (req.method === "POST") {
           if (run.grades) return json(publicRun(state, run));
@@ -421,8 +423,8 @@ export async function handle(
         }
       }
       if (req.method === "POST" && route === "study") {
-        const pack = accessible(state, input.packId, actor);
-        const revision = pack.revisions.find((r) => r.id === pack.publishedId)!;
+        const pack = accessible(state, input.packId);
+        const revision = pack.revisions.find((r) => r.id === activeId(pack))!;
         if (!revision.data.concepts.some((c) => c.id === input.conceptId))
           throw new AppError("개념을 찾지 못했습니다.");
         if (
@@ -441,9 +443,9 @@ export async function handle(
         return json({ ok: true });
       }
       if (req.method === "POST" && route === "flashcards") {
-        const pack = accessible(state, input.packId, actor);
+        const pack = accessible(state, input.packId);
         const revision = pack.revisions.find(
-          (r) => r.id === (input.revisionId || pack.publishedId),
+          (r) => r.id === (input.revisionId || activeId(pack)),
         );
         if (
           !revision ||
@@ -452,7 +454,7 @@ export async function handle(
         )
           throw new AppError("카드와 응답을 확인해 주세요.");
         if (
-          revision.id !== pack.publishedId &&
+          revision.id !== activeId(pack) &&
           !state.reviews.some(
             (r) =>
               r.userId === actor.id &&
@@ -477,7 +479,7 @@ export async function handle(
         return json({ ok: true });
       }
       if (req.method === "POST" && route === "goals") {
-        const pack = accessible(state, input.packId, actor);
+        const pack = accessible(state, input.packId);
         const dailyMinutes = integer(input.dailyMinutes, 5, 480);
         const examDate = input.examDate;
         if (
@@ -501,7 +503,7 @@ export async function handle(
         return json({ ok: true });
       }
       if (req.method === "POST" && route === "reset") {
-        if (input.confirmation !== "DELETE_MY_DEMO_RECORDS")
+        if (input.confirmation !== "DELETE_MY_RECORDS")
           throw new AppError("삭제 확인이 필요합니다.");
         state.runs = state.runs.filter((r) => r.userId !== actor.id);
         state.reviews = state.reviews.filter((r) => r.userId !== actor.id);
