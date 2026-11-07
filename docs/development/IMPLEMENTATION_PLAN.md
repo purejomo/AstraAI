@@ -53,7 +53,7 @@ Git 또는 Node가 이미 설치되어 있다면 해당 설치 명령은 생략.
 
 ## 2026-11-07 · Cloud 단독 MVP 구현
 
-현재 작업 범위는 `docs/CODEX_CLOUD_START.md`에 따라 로컬 데모이며 위의 Supabase/Vercel 연동 순서는 2차 작업으로 이관한다.
+현재 작업 범위는 `docs/development/CODEX_CLOUD_START.md`에 따라 로컬 데모이며 위의 Supabase/Vercel 연동 순서는 2차 작업으로 이관한다.
 
 - [x] Next.js 16 / React 19 / TypeScript 앱, 로컬 서버, ESLint 구성.
 - [x] 관리자 수동 ChatGPT 프롬프트 생성, UTF-8 JSON 파일/텍스트 입력, Ajv 2020-12 및 교차 참조 검증, 내용 검수, 초안 저장과 명시적 게시.
@@ -83,6 +83,17 @@ Git 또는 Node가 이미 설치되어 있다면 해당 설치 명령은 생략.
 - 인증·초대·RLS·Supabase 영속 DB·Vercel·외부 PC 접속은 미구현/미검증. 지금 통과한 기록 분리는 **로컬 데모 세션 기준**이다.
 - 다음 작업: 네트워크 허용 적용 후 PR 생성/원격 CI 결과 확인. 실제 인증과 배포는 별도 사용자 승인 이후 진행.
 - 실제 프로덕션 테스트 서버를 종료한 뒤 같은 임시 데이터 디렉터리로 재시작: 데모 세션·게시 학습팩·채점 결과·복습 일정 유지 확인. 테스트가 만든 임시 디렉터리만 정리했다.
-- 검토용 화면: [1440px 데스크톱](screenshots/dashboard-desktop.png), [390px 모바일](screenshots/dashboard-mobile.png). 자동 테스트용 예제 기록이다.
+- 검토용 화면: [1440px 데스크톱](../screenshots/dashboard-desktop.png), [390px 모바일](../screenshots/dashboard-mobile.png). 자동 테스트용 예제 기록이다.
 
 - `npm run dev` 실제 기동과 익명 bootstrap 응답 확인. Next.js의 자동 AGENTS.md 변경은 문서화된 `agentRules: false`로 꺼서 기존 저장소 지침을 보존한다.
+
+## 2026-11-07 · 사용자용 안내와 개발 문서 분리
+
+- README를 설치·사용·운영 중심으로 다시 작성. 기본 사용 흐름을 빌드 후 `npm start`로 안내하며 Windows `npm.cmd` 오류 해결을 유지했다.
+- 설치/업데이트/백업, 독립 설치/코드 공유, 무료 온라인 운영 안내를 각각 분리했다.
+- PRD·아키텍처·Cloud 지침·검증 이력을 `docs/development/`로 이동하고 AGENTS.md 및 상대 링크를 갱신했다.
+- 개인 PC 설치와 온라인 운영 지원 상태를 구분했다. 온라인 인증/DB가 구현되지 않은 상태를 배포 가능으로 표현하지 않는다.
+- Vercel Hobby와 Supabase Free의 공식 조건을 2026-11-07에 확인하고 출처를 온라인 운영 문서에 기록했다.
+- 저장소는 현재 Private, LICENSE 없음. 공개 전환·라이선스·외부 배포·계정 연결은 수행하지 않았다.
+- 환경 게시 후 GitHub API 접근이 가능해짐을 확인. 앞서 차단된 PR 생성과 원격 CI 확인을 이어간다.
+- 이번 문서 변경 검증: Markdown 서식·상대 파일 링크 검사 통과, 오래된 문서 경로 참조 없음. `npm run build` 성공 후 문서에 안내한 `npm start`로 실제 기동해 앱과 익명 bootstrap 응답을 확인했다. Windows의 `.cmd` 명령은 안내를 유지했으며 이번 검증은 Linux Cloud에서 수행했다.

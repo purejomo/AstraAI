@@ -58,7 +58,7 @@ Next.js + TypeScript + CSS/Tailwind + Zod/Ajv JSON Schema 검사 + Supabase JS +
 
 ## Cloud 단독 MVP 구현 구조 (2026-11-07)
 
-위 배포 구조는 차후 목표다. 현재 실행 버전은 `docs/CODEX_CLOUD_START.md`에 따라 다음 구조를 사용한다.
+위 배포 구조는 차후 목표다. 현재 실행 버전은 `docs/development/CODEX_CLOUD_START.md`에 따라 다음 구조를 사용한다.
 
 ```text
 브라우저의 데모 계정 선택 (실제 인증 아님)

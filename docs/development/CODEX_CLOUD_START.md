@@ -4,7 +4,7 @@
 
 ## 사전 확인
 
-- 먼저 `AGENTS.md`, `docs/PRD_FINAL.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/IMPLEMENTATION_PLAN.md`, `schemas/study-pack.schema.json`, `examples/sample-study-pack.json`을 읽어라.
+- 먼저 `AGENTS.md`, `docs/development/PRD_FINAL.md`, `docs/development/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/development/IMPLEMENTATION_PLAN.md`, `schemas/study-pack.schema.json`, `examples/sample-study-pack.json`을 읽어라.
 - 이 문서의 지시는 **1차 개발 단계에 한해** 이전 문서에 남은 Vercel/Supabase 즉시 연동 일정보다 우선한다.
 - GitHub 저장소가 읽기·쓰기 가능하면 기능 브랜치를 만들고 변경을 커밋한 뒤 PR로 정리하라. 권한이 없으면 코드와 테스트는 진행하고 막힌 점을 명확히 보고하라.
 
@@ -29,7 +29,7 @@
 - 사용 가능한 Cloud 브라우저 테스트 도구(agent-browser 또는 Playwright)를 확인하여 실제 페이지에서 적어도 1440px/390px 테스트. 지원되지 않는 테스트는 대체 테스트와 제한사항 보고.
 - `npm install`, 린트, 단위/통합 테스트, `npm run build` 실행. 실패하면 고치고 재검증.
 - 실사용자 인증·영속 DB·인터넷 상시 접속은 **2차 배포 단계**로 남겨둔다. 해당 기능을 이미 완료했다고 주장하지 말 것.
-- 개발 진행상황, 명령/테스트 결과, 미완료 사항을 `docs/IMPLEMENTATION_PLAN.md`에 기록.
+- 개발 진행상황, 명령/테스트 결과, 미완료 사항을 `docs/development/IMPLEMENTATION_PLAN.md`에 기록.
 - 완료 시 실행 방법(Windows PowerShell 포함), 구현 목록, 검증 결과, GitHub 커밋/PR, 차후 배포 시 필요한 승인만 간결히 보고.
 
 ## 승인 및 비용
